@@ -7,6 +7,7 @@ Group:      System/Libraries
 License:    LGPLv2+
 URL:        http://augeas.net/
 Source0:    http://augeas.net/download/%{name}-%{version}.tar.gz
+Source1001: packaging/augeas.manifest 
 BuildRequires:  readline-devel
 
 
@@ -47,6 +48,7 @@ developing applications that use %{name}.
 
 
 %build
+cp %{SOURCE1001} .
 
 %configure --disable-static
 make %{?jobs:-j%jobs}
@@ -73,6 +75,7 @@ find $RPM_BUILD_ROOT -name '*.la' -exec rm -f {} ';'
 
 
 %files
+%manifest augeas.manifest
 %{_bindir}/augtool
 %{_bindir}/augparse
 %{_bindir}/fadot
@@ -81,10 +84,12 @@ find $RPM_BUILD_ROOT -name '*.la' -exec rm -f {} ';'
 
 
 %files libs
+%manifest augeas.manifest
 %{_datadir}/augeas
 %{_libdir}/*.so.*
 
 %files devel
+%manifest augeas.manifest
 %defattr(-,root,root,-)
 %{_includedir}/*
 %{_libdir}/*.so
