@@ -54,6 +54,8 @@ make %{?jobs:-j%jobs}
 %install
 rm -rf %{buildroot}
 %make_install
+mkdir -p %{buildroot}/usr/share/license
+cp %{_builddir}/%{name}-%{version}/COPYING  %{buildroot}/usr/share/license/%{name}
 
 find $RPM_BUILD_ROOT -name '*.la' -exec rm -f {} ';'
 
@@ -73,6 +75,7 @@ find $RPM_BUILD_ROOT -name '*.la' -exec rm -f {} ';'
 
 
 %files
+/usr/share/license/%{name}
 %{_bindir}/augtool
 %{_bindir}/augparse
 %{_bindir}/fadot
