@@ -59,23 +59,13 @@ cp %{_builddir}/%{name}-%{version}/COPYING  %{buildroot}/usr/share/license/%{nam
 
 find $RPM_BUILD_ROOT -name '*.la' -exec rm -f {} ';'
 
-
-
-
-
-
-
-
 %post libs -p /sbin/ldconfig
 
 %postun libs -p /sbin/ldconfig
 
-
 %docs_package
 
-
 %files
-/usr/share/license/%{name}
 %{_bindir}/augtool
 %{_bindir}/augparse
 %{_bindir}/fadot
@@ -84,6 +74,7 @@ find $RPM_BUILD_ROOT -name '*.la' -exec rm -f {} ';'
 
 
 %files libs
+/usr/share/license/%{name}
 %{_datadir}/augeas
 %{_libdir}/*.so.*
 
