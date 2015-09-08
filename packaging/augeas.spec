@@ -4,7 +4,7 @@ Summary:    A library for changing configuration files
 Version:    0.8.1
 Release:    1
 Group:      System/Libraries
-License:    LGPLv2+
+License:    LGPL-2.1+
 URL:        http://augeas.net/
 Source0:    http://augeas.net/download/%{name}-%{version}.tar.gz
 BuildRequires:  readline-devel
@@ -54,23 +54,18 @@ make %{?jobs:-j%jobs}
 %install
 rm -rf %{buildroot}
 %make_install
+mkdir -p %{buildroot}/usr/share/license
+cp %{_builddir}/%{name}-%{version}/COPYING  %{buildroot}/usr/share/license/%{name}
+cp %{_builddir}/%{name}-%{version}/COPYING  %{buildroot}/usr/share/license/%{name}-libs
+cp %{_builddir}/%{name}-%{version}/COPYING  %{buildroot}/usr/share/license/%{name}-devel
 
 find $RPM_BUILD_ROOT -name '*.la' -exec rm -f {} ';'
-
-
-
-
-
-
-
 
 %post libs -p /sbin/ldconfig
 
 %postun libs -p /sbin/ldconfig
 
-
 %docs_package
-
 
 %files
 %{_bindir}/augtool
@@ -78,9 +73,11 @@ find $RPM_BUILD_ROOT -name '*.la' -exec rm -f {} ';'
 %{_bindir}/fadot
 %{_datadir}/vim/vimfiles/syntax/augeas.vim
 %{_datadir}/vim/vimfiles/ftdetect/augeas.vim
+/usr/share/license/%{name}
 
 
 %files libs
+/usr/share/license/%{name}-libs
 %{_datadir}/augeas
 %{_libdir}/*.so.*
 
@@ -89,4 +86,5 @@ find $RPM_BUILD_ROOT -name '*.la' -exec rm -f {} ';'
 %{_includedir}/*
 %{_libdir}/*.so
 %{_libdir}/pkgconfig/augeas.pc
+/usr/share/license/%{name}-devel
 
