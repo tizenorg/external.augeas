@@ -1,4 +1,3788 @@
+2014-10-31  Chris Hollowell  <hollowec@bnl.gov>
+
+	Cgconfig: permit quoted spaces in parameter values
+	Allow quoted spaces in controller parameter value assignments, making valid
+	statements such as the following permissible:
+
+	  blkio.throttle.read_iops_device="8:0 50";
+
+2014-10-30  Kenaniah Cerny  <kenaniah@users.noreply.github.com>
+
+	Added config.d files to the filter
+	Used by systems running Red Hat or a variant
+
+2014-10-28  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Build: remove unused indent definition
+
+2014-10-22  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Update NEWS
+
+	Httpd: Allow comparison operators in tags (GH #154)
+
+2014-10-17  Tomáš Chvátal  <tomas.chvatal@gmail.com>
+
+	Add more possible SUSE extensions to read from multipath config.
+
+2014-10-17  Alastair Lynn  <arplynn@gmail.com>
+
+	Inifile: allow single-character keys
+
+2014-10-17  Yanis Guenane  <yguenane@gmail.com>
+
+	xml.aug: Allow nmotoken rather than plain word after !DOCTYPE
+	Currently, the lens only accepts a word after the !DOCTYPE word.
+
+	A - valid - Doctype can have the following form :
+	<!DOCTYPE log4j:configuration SYSTEM "log4j.dtd"> making the xml
+	file invalid with the current lens. This commits aims for the lens
+	to accept nmtoken rather than strict word after the DOCTYPE string.
+
+2014-10-17  fonfon  <blubb@fonfon.at>
+
+	Pagekite: new lens and tests
+
+2014-09-23  Dominic Cleal  <dcleal@redhat.com>
+
+	Iptables: parse /etc/sysconfig/iptables.save
+	Fixes RHBZ#1144651
+
+2014-09-23  Pino Toscano  <ptoscano@redhat.com>
+
+	LVM: handle also /etc/lvm/lvm.conf
+	The syntax should be the same, so use the lvm lens also for the main
+	lvm2 configuration file.
+
+	LVM: support negative numbers
+	Use Rx.relinteger instead of Rx.integer so negative numbers as values
+	can be read.
+
+2014-09-18  Dominic Cleal  <dcleal@redhat.com>
+
+	Systemd: parse environment variables where only value is quoted
+	Fixes regression introduced in 5226ae7, which added support to parse fully
+	quoted "NAME=value" environment vars.  To support both, this commit stores
+	the quotes in the value if it's only the value quoted.
+
+	Fixes RHBZ#1138508
+
+2014-09-12  Dominic Cleal  <dcleal@redhat.com>
+
+	Dhclient: parse hash statements with dhcp-eval strings
+
+	Systemd: parse semicolons inside entry values, not as EOL comments
+	Fixes RHBZ#1139498
+
+2014-09-09  Dominic Cleal  <dcleal@redhat.com>
+
+	Kdump: parse new options, permit EOL comments, refactor
+	Fixes RHBZ#1139298
+
+	Test_Kdump: fix test of complete config file
+
+2014-09-05  Dominic Cleal  <dcleal@redhat.com>
+
+	Xml: enable CDATA parsing
+	Fixes GitHub #80
+
+2014-09-04  Dominic Cleal  <dcleal@redhat.com>
+
+	* src/augeas.c (unlink_removed_files): ensure aug_save returns non-zero result   when unable to delete files
+	Fixes RHBZ#1091143
+
+2014-09-03  Dominic Cleal  <dcleal@redhat.com>
+
+	Syslog: permit IPv6 loghost addresses
+	Fixes RHBZ#1129388
+
+	Aliases: permit missing whitespace between colon and recipients
+
+2014-07-24  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	NEWS
+
+	Xml: Allow backslash in #attribute values
+
+2014-07-21  Dominic Cleal  <dcleal@redhat.com>
+
+	Services: permit colons in service name
+	Fixes RHBZ#1121263
+
+2014-07-09  Dominic Cleal  <dcleal@redhat.com>
+
+	Rmt: new lens to parse /etc/default/rmt
+	Fixes RHBZ#1100549
+
+	Systemd: parse /etc/sysconfig/*.systemd as used in 389-ds
+	Fixes RHBZ#1083022
+
+	Shellvars: support $(( .. )) arithmetic expansion in variable assignment
+	Fixes RHBZ#1100550
+
+	Systemd: allow quoted Environment key=value pairs
+	Fixes RHBZ#1100547
+
+2014-06-30  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Simplevars: Support empty values
+
+2014-06-26  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Sshd: support doseol and standardize code
+
+	Sshd: Use Build.opt_list
+
+	Sshd: Also make Host entries case-insensitive
+
+	Ssh: support case-insensitive entries everywhere
+
+2014-06-24  Andy Grimm  <agrimm@redhat.com>
+
+	Add other valid controllers to cgconfig lens
+
+2014-06-19  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Xymon_Alerting: refactor lens (GH issue #89)
+
+2014-06-11  Nick  <npiace@mars.asu.edu>
+
+	Sudoers: Allow quoted string in default str/bool parameters
+	  Made string or bool parameters able to be quoted strings like non-bool strings.
+	  Also added "mailfrom" parameter to the list of string/bool parameters
+	  and removed duplicates from that list.
+
+2014-06-06  Frank Grötzner  <frank@unforgotten.de>
+
+	add support for mtu relevant parameters fragment and mssfix
+
+2014-06-05  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Update NEWS and AUTHORS
+
+2014-06-05  fonk  <frank@unforgotten.de>
+
+	OpenVPN/ Add support for setting script-security
+	Setting script security is especially needed when using learn-address,
+	which we can already set via augeas but is useless without script-security.
+
+2014-06-04  Dominic Cleal  <dcleal@redhat.com>
+
+	* man/augtool.pod: fix description of 'move' alias
+
+2014-06-03  Dominic Cleal  <dcleal@redhat.com>
+
+	* src/augrun.c: remove unused "filename" argument from dump-xml command
+	Fixes RHBZ#1100106
+
+	* man/augtool.pod: update man page with --span option
+
+2014-06-02  Raphaël Pinson  <raphink@gmail.com>
+
+	Update AUTHORS and NEWS
+
+2014-06-02  Joel Loudermilk  <joel@loudermilk.org>
+
+	Multipath: add support for rr_min_io_rq
+
+2014-06-02  Dominic Cleal  <dcleal@redhat.com>
+
+	* man/augtool.pod: update man page with new commands
+	Fixes RHBZ#1100077
+
+	* src/augtool.c: add command aliases to autocomplete
+	Fixes RHBZ#1100184
+
+	Ldso: handle "hwcap" lines
+	Fixes #100
+
+	Rsyslog: parse property filters and file actions with complex templates
+	Fixes RHBZ#1083016
+
+2014-06-02  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Update NEWS
+
+2014-06-02  Pat Riehecky  <riehecky@fnal.gov>
+
+	Added tuned lense
+
+2014-06-02  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Update NEWS and AUTHORS
+
+2014-06-02  Lorenzo M. Catucci  <lorenzo@sancho.ccd.uniroma2.it>
+
+	Add a little bit of ducumentation
+	for both the shadow and the gshadow lenses
+
+2014-06-02  Lorenzo M. Catucci  <lorenzo@sancho.ccd.uniroma2.it>
+
+	Add a lens for /etc/gshadow file format
+	and wire-up its test to the runner's list in Makefile.am
+
+	Also add a mock /etc/gshadow in tests/root
+
+2014-06-02  Lorenzo M. Catucci  <lorenzo@sancho.ccd.uniroma2.it>
+
+	Add a lens for /etc/shadow file format
+	and wire-up its test to the runner's list in Makefile.am
+
+	Also add a mock /etc/shadow in tests/root
+
+2014-06-02  Lorenzo M. Catucci  <lorenzo@sancho.ccd.uniroma2.it>
+
+	Refactor and document
+	 - import already defined lenses from the respective modules
+	   instead of defining them internally
+
+	 - add a missing \r to the excluded chars in sto_to_col
+
+	 - add some documentation
+
+2014-05-14  Michael Tiernan  <michael.tiernan@gmail.com>
+
+	* HACKING: fix git repository URL
+
+2014-05-11  Mike Latimer  <mlatimer@suse.com>
+
+	Device_map: Parse all device.map files under /boot
+
+2014-05-08  Raphaël Pinson  <raphink@gmail.com>
+
+	CPanel: Allow colons in keys
+
+	CPanel: New lens to parse cpanel.config files
+
+2014-05-05  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Simplevars: Support flags
+
+2014-04-24  Raphaël Pinson  <raphink@gmail.com>
+
+	Shellvars: Allow any kind of quoted values in block conditions (GH issue #118)
+
+2014-04-17  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Sssd: Allow ; for comments
+
+2014-04-15  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Allow empty quoted values (GH issue #115)
+
+	Allow continued lines inside quoted value (GH issue #104)
+
+2014-04-12  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Update NEWS and AUTHORS
+
+2014-04-12  Robert Drake  <rdrake@direcpath.com>
+
+	syslog, support for "# !" style comments
+	This makes it so if a comment begins with "# " then +, -, or ! it's
+	treated as a comment and won't have a special meaning.
+
+	fixes #65
+
+2014-04-12  Robert Drake  <rdrake@direcpath.com>
+
+	dhclient, add support for option modifiers
+	This adds basic support for append|prepend|supercede|default
+
+	I believe it has the same limitations as the existing "option" support.
+	Any arguments supplied to the option can't have a space.
+
+	fixes #95
+
+2014-04-12  Vincent Brillault  <vincent.brillault@cern.ch>
+
+	pam: partial support of arguments enclosed in [ .. ]
+	Pam.conf(5) manual page states 'module-arguments are a space separated list
+	of tokens that can be used to modify the specific behavior of the given PAM.
+	Such arguments will be documented for each individual module. Note, if you
+	wish to include spaces in an argument, you should surround that argument with
+	square brackets.', but such arguments are not supported by the pam lenses, as
+	expressed in the comments 'This isn't entirely right: arguments enclosed in
+	[ .. ] are allowed and should be parsed as one'.
+
+	This commit add basic support of such arguments via the regex:
+	'/(\[[^]#\n]+\]|[^[#\n \t][^#\n \t]*)/'
+
+	It is only a partial support as some corner cases are not covered:
+	- Multi line arguments (lines ending with '\')
+	- Arguments containing a '[' (escaped via '\')
+
+2014-04-12  Robert Drake  <rdrake@direcpath.com>
+
+	added seq to vim syntax highlight
+
+2014-04-03  Simon Séhier  <simon.sehier@camptocamp.com>
+
+	add missing } in file path for nagios/icinga objects
+
+2014-03-13  Raphaël Pinson  <raphink@gmail.com>
+
+	UpdateDB: Update tests to ensure spaces around = are OK
+
+	Update NEWS
+
+	UpdateDB: New lens to parse /etc/updatedb.conf
+
+2014-03-13  Dominic Cleal  <dcleal@redhat.com>
+
+	* augeas.spec.in: improve augeas-libs description
+
+2014-03-12  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Httpd: Add unit test for comment on next line
+
+	Httpd: Define an eol_comment in section to allow for \n before comment
+
+2014-03-11  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Httpd: Allow eol comments after section tags
+
+2014-03-06  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Rx: Add iso_8601 simple regex
+
+	Update NEWS
+
+	Update AUTHORS and NEWS
+
+2014-03-06  Robert Drake  <rdrake@direcpath.com>
+
+	dhcpd, style and test changes suggested by raphink
+	I also updated the NEWS entry to note the incompatible change
+
+	dhcpd, fix for put on dhcp option records
+	Type cannot be blank.  I fixed this by making it use record instead of
+	nesting through "type"
+
+	dhcpd, fix for key block puts
+	I discovered this after thinking I was done.  It actually was a problem
+	before I started messing with the code but I didn't notice it because
+	there was never any test for keys.
+
+	dhcpd, removed unused variable and reformatted
+	stmt_subclass was a little too cluttered so I changed it to multiple
+	lines for readability.  I had also introduced an unused lens sep_to_ncl
+	which I removed.
+
+2014-03-06  Robert Drake  <rdrake@direcpath.net>
+
+	dhcpd, changing quotes on stmt_block_arg
+	This patch can break users parsers.
+
+	Fixes failover-peer, shared-network, class, host, zone, group, and "on" to
+	handle quoted values properly.
+
+	It also allows optional semicolon at the end of key {} block.
+
+2014-03-06  Robert Drake  <rdrake@direcpath.net>
+
+	dhcpd, adding support for "on" statement
+	For things like:
+
+	on commit {
+	      set ClientIP = binary-to-ascii(10, 8, ".", leased-address);
+	      set ClientMac = binary-to-ascii(16, 8, ":", substring(hardware, 1, 6));
+	}
+
+2014-03-06  Robert Drake  <rdrake@direcpath.net>
+
+	dhcpd, added fddi to stmt_hardware
+	getting pretty obscure..
+
+2014-03-06  Robert Drake  <rdrake@direcpath.net>
+
+	dhcpd, adding support for set command
+	This allows you to define variables in your dhcp configuration.  They
+	can be arbitrarily complicated.
+
+	Things like this:
+
+	      set ClientIP = binary-to-ascii(10, 8, ".", leased-address);
+	      set ClientMac = binary-to-ascii(16, 8, ":" , substring(hardware, 1, 6));
+
+	I also added most of the rest of the functions from dhcp-eval and listed
+	the limitations of the current parser.  I don't think I'm going to be
+	able to fix most of it but I think I'm getting into obscure features
+	that most people don't bother using.
+
+	At this point if they need to do very strange class maps they could put
+	them in an include file and not have augeas parse it.
+
+2014-03-06  Robert Drake  <rdrake@direcpath.net>
+
+	dhcpd, added support for match if suffix|option
+	I also relaxed the rules on matching quoted and unquoted values.
+
+	Things like:
+	    match if suffix (option vendor-class-identifier,6)="123456";
+	or
+	    match if option vendor-class-identifier="Brave, Warrior Pidgins";
+
+	work now.
+
+2014-03-06  Robert Drake  <rdrake@direcpath.net>
+
+	dhcpd fix to allow subclasses values to be quoted
+	DHCP subclass values can have spaces in them.
+
+	Here is an example:
+	subclass "consoles" "Xbox 360";
+	subclass "consoles" "Nintendo 3DS";
+	subclass "consoles" Wii;
+	subclass "consoles" NintendoDS;
+
+2014-03-06  Robert Drake  <rdrake@direcpath.net>
+
+	dhcpd known-clients allows spaces in it's value
+	This is a fix for lines like these:
+
+	   deny unknown clients;
+	   deny known clients;
+	   allow known clients;
+	   allow unknown clients;
+
+2014-03-06  Robert Drake  <rdrake@direcpath.net>
+
+	dhcpd, fix for quoted characters in members of
+	Some of my "allow members of" statements have more complicated names
+	that include things like parenthesis.  This change makes it so semicolon
+	and space are the only things not allowed in barewords, and quotes and
+	newlines are the only thing not allowed in quoted things.
+
+2014-03-06  Robert Drake  <rdrake@direcpath.net>
+
+	dhcpd, fix whitespace problems with blocks
+	Most blocks should support braces at the end of a line or
+	on the next line.
+
+	Like this:
+
+	class "test class"
+	{
+
+	}
+
+	or
+
+	class testclass {}
+
+2014-03-06  Robert Drake  <rdrake@direcpath.net>
+
+	dhcpd, expanding support for user-defined-options
+	This incorporates changes suggested by raphink.
+
+	It should be able to parse all of the following DHCP options now:
+
+	    option name-service-search code 117 = array of unsigned integer 16;
+	    option domain-search code 119 = string;
+	    option sip-servers code 120 = string;
+	    option classless-static-route code 121 = string;
+	    option space cable-labs;
+	    option cable-labs.tsp-primary-dhcp-server code 1 = ip-address;
+	    option cable-labs.tsp-secondary-dhcp-server code 2 = ip-address;
+	    option cable-labs.tsp-provisioning-server code 3 = string;
+	    option cable-labs.tsp-as-backoff-retry code 4 = { unsigned integer 32, unsigned integer 32, unsigned integer 32 };
+	    option cable-labs.tsp-ap-backoff-retry code 5 = { unsigned integer 32, unsigned integer 32, unsigned integer 32 };
+	    option cable-labs.tsp-kerberos-realm-name code 6 = string;
+	    option cable-labs.tsp-ticket-granting-server-utilization code 7 = boolean;
+	    option cable-labs.tsp-provisioning-timer code 8 = unsigned integer 8;
+	    option cable-labs-encapsulation code 122 = encapsulate cable-labs;
+	    option tftp-server-address code 150 = array of ip-address;
+	    option ip-telephone code 176 = string;
+	    option wpad-url code 252 = text;
+
+2014-03-06  Robert Drake  <rdrake@direcpath.net>
+
+	dhcpd, add support for omapi-key statement
+	You can use this along with omapi-port to specify a secure way to talk
+	to your DHCP server.
+
+	key myspecialkey {
+	    algorithm hmac-md5;
+	    secret "base64string==";
+	}
+
+	omapi-key myspecialkey;
+	omapi-port 7911;
+
+2014-03-06  Robert Drake  <rdrake@direcpath.net>
+
+	dhcpd, add support for named groups
+	Things like group Special_users {
+
+	}
+
+2014-03-04  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Update NEWS
+
+	Desktop: Allow @ in keys (GH issue #92)
+
+2014-03-03  KaMichael  <KaMichael@users.noreply.github.com>
+
+	Group: Dropped nisentry (not valid here)
+
+	group: Testcase for NIS default
+
+2014-03-03  KaMichael  <KaMichael@gmail.com>
+
+	Update group.aug
+
+	Update group.aug to parse NIS entries
+
+2014-02-28  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Update NEWS
+
+2014-02-28  Pat Riehecky  <riehecky@fnal.gov>
+
+	Added chrony lense
+
+2014-02-25  Dominic Cleal  <dcleal@redhat.com>
+
+	Krb5: permit braces in values when not in sub-section
+	Fixes RHBZ#1066419
+
+2014-02-21  Dominic Cleal  <dcleal@redhat.com>
+
+	Keepalived: add more virtual/real server settings and checks
+	Fixes RHBZ#1064388
+
+2014-02-21  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	NetworkManager: Use the Quote module, support # in values (no eol comments)
+
+2014-02-20  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	AptPreferences: Support spaces in origin fields
+
+	Remove mercurial legacy files
+
+	Sshd: Allow all types of issues in Match groups (GH issue #75)
+
+	Update NEWS
+
+	Add cp to manpage (issue #78)
+
+	Update AUTHORS and NEWS
+
+2014-02-20  Mykola Nikishov  <mn@mn.com.ua>
+
+	Support configuration file for Squid 3
+
+2014-02-12  Dominic Cleal  <dcleal@redhat.com>
+
+	IPRoute2: handle "/" in protocol names, swap ID and name fields
+	This is an incompatible change.
+
+	Fixes RHBZ#1063968
+
+2014-02-12  Dominic Cleal  <dcleal@redhat.com>
+
+	IPRoute2: handle hex IDs and hyphens in names, as present in rt_dsfield
+	Fixes RHBZ#1063961
+
+2014-02-10  Dominic Cleal  <dcleal@redhat.com>
+
+	Shellvars: handle case statements with same-line ;; tokens
+	Fixes RHBZ#1033799
+
+2014-02-08  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Update NEWS
+
+	Fix release date for 1.2.0 in NEWS
+
+	Add Known_Hosts lens
+
+2014-01-30  Miguel Armas  <kuko@canarytek.com>
+
+	Grub: handle "foreground" option
+	Fixes RHBZ#1059383
+
+2014-01-27  David Lutterkort  <lutter@watzmann.net>
+
+	Version 1.2.0
+
+2014-01-27  Raphaël Pinson  <raphink@gmail.com>
+
+	Update NEWS with span info in XML dump
+
+2014-01-27  Dominic Cleal  <dcleal@redhat.com>
+
+	Add %check to RPM spec, fix download URL
+	  * augeas.spec.in: add %check to run `make check` during build, skipping
+	    SELinux tests which don't work in a mock environment
+
+	Original %check patch from Richard Jones <rjones@redhat.com>
+
+2014-01-27  Raphaël Pinson  <raphink@gmail.com>
+
+	Add span info to XML dump
+	For a node, add span information for the label, value, and node overall if
+	it is present in the tree. The resulting XML looks like
+
+	  <node label="..." file="..." path="...">
+	    <span for="label" start="..." end="..."/>
+	    <span for="value" start="..." end="..."/>
+	    <span for="node" start="..." end="..."/>
+	    <value>...</value>
+	  </node>
+
+2014-01-27  David Lutterkort  <lutter@watzmann.net>
+
+	Rename build/aux to build/ac-aux
+	The directory name 'aux' is special on Windows, and using it keeps the
+	build from working.
+
+	You will need to rerun autogen.sh after this change
+
+2014-01-23  Raphaël Pinson  <raphink@gmail.com>
+
+	Update NEWS
+
+	Sshd: let all special keys be case-insensitive
+
+	Update NEWS
+
+	Sshd: Support Ciphers and KexAlgorithms groups, GH issue #69
+
+	Update NEWS
+
+	Grub: Add 'verbose' option, GH issue #73
+
+	Update NEWS
+
+	Shellvars_list: Allow end-of-line values, bug #342
+
+	Fix xymonalerting into xymon_alerting in tests/Makefile.am
+
+	Add Xymon_Alerting lens to NEWS, update AUTHORS
+
+	Rename XymonAlerting lens as Xymon_Alerting
+
+	Fix NaturalDocs comments in XymonAlerting lens
+
+2014-01-23  Francois Maillard  <fmaillard@gmail.com>
+
+	Add NaturalDocs documentation to the xymonalerting lens and its tests
+
+	add basic doc
+
+	Add the test lens to the Makefile
+
+	New lens for xymon alerting rules
+
+2014-01-23  Raphaël Pinson  <raphink@gmail.com>
+
+	Update NEWS with Authorized_Keys change
+
+2014-01-23  Jasper Lievisse Adriaanse  <jasper@humppa.nl>
+
+	Allow 'ssh-ed25519' as a valid authorized_key type
+
+2014-01-23  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Update NEWS and AUTHORS
+
+2014-01-13  Kaarle Ritvanen  <kaarle.ritvanen@datakunkku.fi>
+
+	Interfaces: map bond-slaves and bridge-ports options to arrays
+	This is a backwards incompatible change, as these would previously show up
+	as strings in the tree
+
+2014-01-13  Tomas Klouda  <tomas.klouda@gooddata.com>
+
+	Fix MongoDB Server lens - MongoDB doesn't accept quoted values
+	This lens worked for already defined values, but once you wanted to
+	add new value, it was created with quotes and MongoDB failed to start
+
+2014-01-13  Dominic Cleal  <dcleal@redhat.com>
+
+	Fix umask handling when creating new files
+	  * src/transform.c (transform_save): faulty umask arithmetic would cause
+	    overly-open file modes when the umask contains "7", as the umask was
+	    incorrectly subtracted from the target file mode
+
+	Fixes CVE-2013-6412, RHBZ#1034261
+
+2014-01-13  Freakin  <brendanaye@gmail.com>
+
+	OpenVPN: additional config options
+	Support
+	  1) daemon
+	  2) client-config-dir
+	  3) route
+	  4) management
+
+2014-01-13  David Lutterkort  <lutter@watzmann.net>
+
+	* NEWS: describe Slapd changes in last few commits
+
+2014-01-13  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Slapd: move by/who to the value of by
+
+	Slapd: Allow any allowed combination of who/access/control in by field
+
+	Slapd: support smart quotes in database entry
+
+	Slapd: remove duplicate entry in database_re
+
+	Slapd: rename by parameters
+	* Rename by/what as by/access (as per official doc)
+	* Allow access to be absent (as per official doc)
+
+2014-01-07  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Slapd: Add unit test for by/control
+
+2013-12-18  Dominic Cleal  <dcleal@redhat.com>
+
+	Shellvars, Sysconfig: map "bare" export and unset lines using seq to handle multiple variables
+	Fixes RHBZ#1033795
+
+2013-12-18  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Shellvars.lns: Actually test continued lines and fix support
+
+	Shellvars.lns: add unit test for continued lines in double quoted values
+
+2013-12-16  Dominic Cleal  <dcleal@redhat.com>
+
+	Sysconfig: permit empty comments after comment lines
+	Fixes RHBZ#1043636
+
+2013-12-05  Dominic Cleal  <dcleal@redhat.com>
+
+	Shellvars: fix syntax error in filter
+
+2013-12-04  David Lutterkort  <lutter@watzmann.net>
+
+	Shellvars: exclude /etc/sysconfig/ip*tables.save files
+
+2013-12-03  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Sudoers.lns: Allow uppercase characters in user names (ticket #376)
+
+	Build: Add combine_three_ord and combine_three
+
+	Build: Add combine_two_ord and combine_two
+
+	Yum.lns: split excludes as lists (ticket #275)
+
+	Build: Add combinatorics group
+
+	Yum.lns: simplify code for combinatory logic of list_entry elements
+
+2013-12-02  Tomas Hoger  <thoger@redhat.com>
+
+	Corrections for CVE-2012-0786 tests
+	- test-put-symlink-augsave.sh - variable $HOSTS_AUGNEW was used to check if
+	  file was still symlink, while it wasn't set before.  Fix to use
+	  $HOSTS_AUGSAVE.
+	- test-put-symlink-augnew.sh, test-put-symlink-augsave.sh - 'test -f'
+	  dereferences symlink and hence can not be used to check if file is regular
+	  file or symlink to a regular file.  Use 'test -h' instead.
+
+2013-12-02  Tomas Hoger  <thoger@redhat.com>
+
+	Correct locations table for transform_save()
+	Commit 16387744 introduced a table with locations of temporary, destination and
+	backup file in various modes as part of the comment for transform_save().  This
+	corrects two incorrectly listed temporary file locations.
+
+	Note that PATH_canon is somewhat misleading, as canonicalized path is always
+	used when not using NEWFILE save flag, while it is meant to indicate whether
+	file is created in a directory that contains symlink, or a directory that
+	contains symlink's target.
+
+2013-12-02  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Desktop.lns: Support square brackets in keys
+
+2013-11-19  Dominic Cleal  <dcleal@redhat.com>
+
+	* src/transform.c (filter_matches): wrap fnmatch to ensure that an incl   pattern containing "//" matches file paths
+	Fixes RHBZ#1031084
+
+2013-11-09  Sean Millichamp  <sean.millichamp@secure-24.com>
+
+	Enhance Nagiosobjects lens
+	This adds support and tests for three additional Nagios
+	supported behaviors:
+	- An optional space between the object name and the {
+	   Example: "define host{"
+	- An optional indent prior to the closing }
+	   Example: "    }"
+	- Whole-line comments that start with ;
+	   Example: "; This is a comment"
+
+	It does not add support for end-of-line comments with ;
+
+2013-11-09  Yanis Guenane  <yguenane@gmail.com>
+
+	Dhcpd: support a wider variety of DHCP allow/deny/ignore statement
+	The Dhcpd.aug was missing a part of the allow/deny/ignore possible
+	statement. This commit updates the lense so it supports the list
+	of options available here
+
+	http://www.ipamworldwide.com/declarations-topological/declarations-allowdenyignore.html
+
+	Also this bug was preventing a Foreman user to parse the dhcpd.conf
+	generated by theforeman/dhcp puppet module
+
+2013-11-09  Dominic Cleal  <dcleal@redhat.com>
+
+	Yum: permit spaces after equals sign in list options
+	Fixes GitHub issue #45
+
+2013-11-08  Matteo Cerutti  <matteo.cerutti@hotmail.co.uk>
+
+	Sudoers: permit underscores in group names
+	Fixes ticket #370
+
+2013-11-01  Andrew N Golovkov  <a.golovkov@dwteam.ru>
+
+	include only *.repo files from yum.repos.d;
+
+2013-10-24  Michael Haslgrübler  <work-michael@haslgruebler.eu>
+
+	Use Quote module in dovecot
+	* use Quote.dquote_spaces for quoting
+
+	dovecot enchancement and bug fixes
+	* add mailbox to block_names
+	* fix for block_args in quotes
+	* fix for block's brackets upon write
+	* fixes broken tests for mailbox
+	* fixes indention
+	* test case for block_args with "
+	* fixes broken indention
+
+2013-10-17  Dominic Cleal  <dcleal@redhat.com>
+
+	Shellvars_list: handle backtick variable assignments
+	Fixes ticket #368
+
+2013-10-08  Yanis Guenane  <yguenane@gmail.com>
+
+	Update NEWS
+
+2013-10-07  Dietmar Kling  <baldur@email.de>
+
+	Cyrus_Imapd: create new entries without space before separator
+	Fixes RHBZ#1014974
+
+2013-10-05  Dominic Cleal  <dcleal@redhat.com>
+
+	Exports: permit colons for IPv6 client addresses
+	Fixes ticket #366
+
+2013-09-20  Esteve Fernandez  <esteve.fernandez@gmail.com>
+
+	Added dhclient.conf path for Debian/Ubuntu
+
+2013-09-09  Yanis Guenane  <yguenane@gmail.com>
+
+	Fix Trac#364. Syslog lense accept UDP(@) and TCP(@@) protocol
+	Currently the syslog lense only accept sending log to another host
+	via UDP - a single @ -, and was discarding TCP - a double @ -. This
+	PR fixes that.
+
+	Fix test_rsyslog.aug
+
+	Remove unused variable at
+
+2013-09-07  Yanis Guenane  <yguenane@gmail.com>
+
+	Fix NagiosCfg lense so /etc/nagios/nrpe.cfg is parsed by Nrpe and not NagiosCfg
+	Currently NagiosCfg lense is in charge of parsing all files under /etc/nagios/*.cfg
+	but /etc/nagios/commands.cfg. /etc/nagios/nrpe.cfg should be also added as an exception
+	since it needs to be parsed by the Nrpe lense. This issue currently causes the following
+	error : "Lenses @NagiosCfg and @Nrpe could be used to load this file"
+
+2013-09-02  Dominic Cleal  <dcleal@redhat.com>
+
+	* tests/test-load.c (testPermsErrorReported): skip permissions test when root
+
+2013-08-27  Tom Hendrikx  <tom@whyscream.net>
+
+	Postfix_virtual: allow '+' and '=' in email addresses
+	+ ('plus') and = ('equals') are valid characters in email addresses.
+	Example is from postfix docs, see:
+	http://www.postfix.org/MULTI_INSTANCE_README.html#quick
+
+2013-08-27  Raphaël Pinson  <raphink@gmail.com>
+
+	Add aug_cp and the cp and copy commands
+
+2013-08-27  Dominic Cleal  <dcleal@redhat.com>
+
+	Grub: handle makeactive menu command
+	Fixes ticket #340
+
+	Postfix_Main: handle stray whitespace at end of multiline lines
+	Fixes ticket #348
+
+2013-08-27  Pat Riehecky  <riehecky@fnal.gov>
+
+	Koji: new lens to parse Koji configs
+
+2013-08-27  Dominic Cleal  <dcleal@redhat.com>
+
+	Access: support DOMAIN\user syntax for users and groups
+	Fixes ticket #353
+
+	Samba: permit asterisk in key name
+	Fixes ticket #354
+
+	Shellvars: support all types of quoted strings in arrays
+	Patch from webmeister.  Fixes ticket #357.
+
+2013-08-27  Pat Riehecky  <prieheck@iwu.edu>
+
+	Yum: add yum-cron*.conf files
+
+2013-08-27  Pascal Lalonde  <plalonde@google.com>
+
+	Interfaces: allow numeric characters in stanza options
+
+2013-08-27  David Lutterkort  <lutter@watzmann.net>
+
+	Shellvars: read /etc/firewalld/firewalld.conf
+	Fixes https://fedorahosted.org/augeas/ticket/363
+
+2013-08-27  Matthew Booth  <mbooth@redhat.com>
+
+	Grub: support the 'lock' directive
+
+	Grub: NFC fix whitespace errors introduced by 4e09d15
+	Kill tabs!
+
+	Grub: support the 'setkey' directive
+
+2013-08-27  Michael Wisheu  <wisheu@google.com>
+
+	Interfaces: add /etc/network/interfaces.d/* as another commonly used location
+
+2013-08-06  Raphaël Pinson  <raphink@gmail.com>
+
+	Update NEWS
+
+	Fix NaturalDocs comments in lenses
+
+2013-08-06  Stephen P. Schaefer  <sschaefer@acm.org>
+
+	Allow augeas to deal with one variant of /etc/sysconfig/network-scripts/route-*
+
+2013-08-01  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Update NEWS
+
+	Properties: Support multiline starting with an empty string, GH issue #19
+
+	Dhcpd: support conditionals, GH issue #34
+
+	Update NEWS
+
+	PHP: Allow php-fpm syntax (GH issue #35)
+
+2013-08-01  Patrick Adair  <padair@he.net>
+
+	Interfaces: add in support for the source stanza in /etc/network/interfaces files
+
+2013-07-30  Dominic Cleal  <dcleal@redhat.com>
+
+	Simplevars: adopt /etc/selinux/semanage.conf due to spaces around delimiters
+
+2013-07-30  Michael Scherer  <misc@zarb.org>
+
+	Shellvars: add /etc/selinux/semanage.conf
+
+2013-07-30  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Start new NEWS section
+
+	Fix documentation links in c_api naturaldocs menu
+
+2013-07-24  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Sshd: also indent comments by 2 spaces by default in Match groups
+
+	Sshd: Indent Match entries by 2 spaces by default
+
+2013-06-27  Jan Vansteenkiste  <jan@vstone.eu>
+
+	Fixes #27: Automounter lens does not handle hostnames with dashes in them
+
+2013-06-24  Jasper Lievisse Adriaanse  <jasper@humppa.nl>
+
+	Fix my name
+
+2013-06-14  David Lutterkort  <lutter@watzmann.net>
+
+	Version 1.1.0
+
+	Make tree_unlink safer to use
+	tree_unlink used to only remove nodes from the tree, leaving the
+	possibilities of dangling references from variables stored in the
+	symtab. The new incarnation is safer in that it cleans up the symtab first.
+
+2013-06-14  David Lutterkort  <lutter@watzmann.net>
+
+	Do not interpret file names as path exprs during load
+	We used to interpret file names as path expressions at various points in
+	the process of loading the tree. That lead to nasty failures if the file
+	names contained characters that have a special meaning in path expressions,
+	like '!', '[' etc.
+
+	When the loading code now creates nodes or looks them up based on filenames
+	(e.g. to create the file's top level node in /files or the info node in
+	/augeas/files), we now use tree_fpath/tree_fpath_cr to do that.
+
+	The workaround introduced into shellvars.aug to fix tiecket #246 is also no
+	longer needed.
+
+	Fixes https://fedorahosted.org/augeas/ticket/343
+	Fixes https://fedorahosted.org/augeas/ticket/333
+	Improves on the fix for https://fedorahosted.org/augeas/ticket/246
+
+2013-06-14  David Lutterkort  <lutter@watzmann.net>
+
+	* src/transform.c (xfm_error): do not segfault when msg is NULL
+
+	* src/try: make 'try gdb' work with emacs-24 and gdb-7.5.1
+
+2013-06-11  David Lutterkort  <lutter@watzmann.net>
+
+	LVM: fix handling of quoted strings that contain quotes
+	Fixes https://github.com/hercules-team/augeas-do-not-use/issues/28 reported
+	by brianredbeard
+
+2013-06-11  Erik B. Andersen  <erik.b.andersen@gmail.com>
+
+	AptCacherNGSecurity: new lens for /etc/apt-cacher-ng/security.conf
+
+2013-06-11  brian redbeard  <brian@dead-city.org>
+
+	Added node config for OpenShift
+	When the intial lens was developed there was a missing transform
+	on /etc/openshift/node.conf
+
+	This is a fix for bug hercules-team/augeas#22
+
+2013-06-04  David Lutterkort  <lutter@watzmann.net>
+
+	Xorg: allow 'Screen' in Device section
+	Patch from merkela
+
+	Fixes bug https://fedorahosted.org/augeas/ticket/344
+
+2013-06-03  David Lutterkort  <lutter@watzmann.net>
+
+	Xorg: support extmod section
+	Patch by merkela
+
+	Partial fix for https://fedorahosted.org/augeas/ticket/344
+
+2013-05-30  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Yum: optimize regexp substractions
+
+	Nrpe: optimize regexp substractions
+
+	Mdadm_Conf: optimize regexp substractions
+
+	Fai_Diskconfig: Optimize regexp substractions
+
+	Shellvars: Optimize regexp substraction
+
+2013-05-28  Dominic Cleal  <dcleal@redhat.com>
+
+	Automaster: accept spaces between options
+
+2013-05-24  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Update NEWS
+
+	Add Rob Tucker to AUTHORS
+
+	Add README as a symlink to README.md to make autogen relax
+
+2013-05-24  Rob Tucker  <rtucker11@gmail.com>
+
+	Added augeas lens and test for the asterisk sip.conf file
+
+2013-05-22  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	postfix_master: Allow [] in words (ticket #345)
+
+2013-05-17  David Lutterkort  <github@watzmann.net>
+
+	Update README.md
+	Reformat as GH-flavored markdown; add a License section
+
+	Rename README to README.md
+
+2013-05-17  David Lutterkort  <lutter@watzmann.net>
+
+	* tests/test-run.c (load_module): do not downcase the lensdir
+	We should not touch the lensdir, since it is user provided; we only want to
+	downcase the module name.
+
+	Patch by aponomarenko
+
+	Fixes bug #332
+
+2013-05-17  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Add --echo alias to augtool manpage
+
+	Add -t option to augtool manpage
+
+2013-05-17  Enrico Stahn  <mail@enricostahn.com>
+
+	PHPFPM Support
+
+2013-05-16  Francis Giraldeau  <francis.giraldeau@gmail.com>
+
+	Add Splunk lens
+	Lens to parse Splunk configuration. Based on IniFile lens, with few differences:
+
+	* Accepts empty value in entry
+	* Entries without parent section are children of .anon node
+
+	Thanks to Tim Brigham for this contribution.
+
+2013-05-16  Francis Giraldeau  <francis.giraldeau@gmail.com>
+
+	Add CR as a white space char in RX.space_in
+	CR is used in the IniFile lens as of EOL. To avoid concat ambig between
+	IniFile.store_to_eol and IniFile.eol, CR has to be added to Rx.space_in. This
+	change do not break any existing lens in the repository.
+
+2013-05-16  Davide Guerri  <davide.guerri@gmail.com>
+
+	adds support for iptoute2 configuration files (/etc/iproute2/*)
+
+2013-05-16  Simon Vocella  <voxsim@gmail.com>
+
+	JaaS: lens for the Java Authentication and Authorization Service
+
+2013-05-15  David Lutterkort  <lutter@redhat.com>
+
+	Function composition: fix the typing of the generated lambda
+	When f and g are functions, 'f ; g' gets translated into
+	  lambda x: g (f x)
+
+	The resulting function wasn't typed right, which led to an internal error.
+
+	This fixes bug #328
+
+2013-05-08  Raphaël Pinson  <raphink@gmail.com>
+
+	Update AUTHORS
+
+2013-05-08  Brian Harrington  <bharrington@redhat.com>
+
+	Added support for OpenShift
+	Added a series of lenses to support the corresponding configuration
+	formats including conf, JSON, & HTTP.
+
+2013-05-08  Brian Harrington  <bharrington@redhat.com>
+
+	Add support for MongoDB Server
+	A basic lens and test to support the configuration of MongoDB
+
+	Added infrastructure components for MongoDB
+
+	Included references to MongoDBServer to handle the auto testing of
+	lenses on build & mention of lens in for autodoc generation.
+
+	fixes hercules-team/augeas/#25
+
+	Improved documentation on MongoDBServer filter
+
+	Added improved reference and usage information for the lens
+
+	Mistyped port path in MongoDBServer lens usage
+
+	The port component was missing from the set command
+
+	fixes herclues/team-augeas/#25
+
+2013-05-08  Brian Harrington  <bharrington@redhat.com>
+
+	Added support for ActiveMQ / Red Hat JBoss A-MQ
+	Added a series of lenses to support the file formats utilized with
+	the project ActiveMQ / Red Hat JBoss A-MQ.
+
+	ActiveMQ is a standards-based, open source messaging platform
+	shipped by Red Hat (Formerly Fuse Source).
+
+	http://activemq.apache.org/
+	http://www.redhat.com/products/jbossenterprisemiddleware/amq/
+
+2013-04-30  Mathieu Alorent  <malorent@kumy.net>
+
+	Add more flags
+	add other flags, and use regexp to check
+
+2013-04-30  Mathieu Alorent  <malorent@kumy.net>
+
+	implement Downtime feature
+	As seen in this thread, there is a downtime feature that is not
+	parsed by Augeas.
+
+	http://lists.xymon.com/archive/2011-March/030998.html
+
+2013-04-20  Dominic Cleal  <dcleal@redhat.com>
+
+	Rsyslog: support :omusrmsg: list of users in actions
+
+2013-04-15  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Passwd: allow period in user names in spec (fixes #337)
+
+	Passwd: allow overrides in nisentry
+
+2013-03-31  Gonzalo Servat  <gservat@gmail.com>
+
+	Nrpe: accept any config option, remove predefined list
+
+2013-03-30  Branan Purvine-Riley  <branan@puppetlabs.com>
+
+	Add support for port ranges to /etc/services lens
+	The `/etc/services` file on AIX can contain entries with ranges of ports. This change allows Augeas to parse such files.
+
+	Example from an AIX /etc/services file:
+	    x11                      6000-6063/tcp  # X Window System
+	    x11                      6000-6063/udp  # X Window System
+
+2013-03-21  Dominic Cleal  <dcleal@redhat.com>
+
+	Shellvars: reinstate /etc/sysconfig/network
+	Fixes #330, RHBZ#904222, RHBZ#920609
+
+2013-03-14  Gabriel  <g2p.code@gmail.com>
+
+	Add some autodoc comments.
+
+	Add a lens for LVM metadata.
+
+2013-03-11  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Update NEWS
+
+2013-03-11  Serge Smetana  <smetana@pluron.com>
+
+	Added lens for Dovecot config files
+
+2013-03-01  Dominic Cleal  <dcleal@redhat.com>
+
+	* src/augtool.c (usage): fix spelling error
+
+2013-02-07  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Krb5: Improve performances
+
+2013-02-07  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	IniFile: Support dos eol
+	  Subversion: Support dos eol
+	  Desktop: Support dos eol
+	  MySQL: Support dos eol
+	  Samba: Support dos eol
+	  Yum: Support dos eol
+	  Krb5: Support dos eol
+
+	  IniFile: Add empty_generic_nocomment
+	  Rx: make no_spaces compatible with doseol
+	  Schroot: Use empty_generic_nocomment
+
+2013-02-07  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	IniFile: Allow quotes inside bare values
+
+	IniFile: Multiline values can begin with a single newline
+
+	IniFile: Add empty_generic and empty_noindent
+	  Subversion: Use IniFile.empty_noindent
+
+	IniFile: Add entry_generic and entry_multiline_generic
+	Subversion: Use IniFile.entry_multiline_generic
+
+	IniFile: Allow spaces in entry_multiline* values
+
+2013-02-07  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	IniFile: Use Util.comment_generic and Util.empty
+	  Add put test for ace
+
+	  Lightdm: empty comments are mapped as empty
+	  PHP: empty comments are mapped as empty
+	  Odbc: empty comments are mapped as empty
+	  Samba: empty comments are mapped as empty
+	  Krb5: Fix tests for new IniFile.empty
+	  MySQL: Support smart quotes and empty comments
+	  Yum: Use Util.empty instead of IniFile.empty
+	  Subversion: Adapt to new IniFile.empty definition
+	  Systemd: Fix tests for new IniFile.empty
+
+2013-02-07  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	IniFile: Support smart quotes
+	  Add support for smart quotes in IniFile lenses.
+	  Fix PHP lens to support smart quotes.
+	  Subversion: Adapt to smart quotes but allow ; in values
+	  Schroot: Support smart quotes
+
+	IniFile: Add ready-to-use lns_loose and lns_loose_multiline lenses
+
+2013-02-06  Andrew Anderson  <andrew@lirn.net>
+
+	Krb5: fix parse error with IPA generated krb5.conf
+
+2013-02-06  Igor Pashev  <pashev.igor@gmail.com>
+
+	* configure.ac: better detection of how to pass version script to linker
+	This now also works on Illumos when using GNU ld
+
+	Fixes https://fedorahosted.org/augeas/ticket/289
+
+2013-02-06  Jan Pokorný  <jpokorny@redhat.com>
+
+	lenses.tex: fix typos, single-quote cleanup
+
+2013-01-23  Dominic Cleal  <dcleal@redhat.com>
+
+	Shellvars: ignore network configs with brackets in their name
+	SSIDs containing brackets would cause aug_init failures, as the characters are
+	parsed in path expressions.
+
+	Fixes ticket #246
+
+2013-01-23  David Lutterkort  <lutter@redhat.com>
+
+	augparse: add --trace option
+	Using --trace will print the filenames of all modules that are loaded.
+
+	Shellvars: ignore network configs with ! in their name
+	NetworkManager would write such files, but that leads to problems during
+	aug_init, as the attempt to create the node
+	/augeas/files/etc/sysconfig/network-scripts/FILE!NAME will fail as that is
+	not a valid path expression
+
+	* .gitignore: ignore test result files (*.trs)
+
+	* acinclude.m4: only turn on FORTIFY_SOURCE if it won't anger gcc
+	Following libvirt commits cf9bced0 and 1c2edf0f
+
+2013-01-10  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Quote: Allow multiple spaces in quote_spaces
+
+2013-01-10  Jasper Lievisse Adriaanse  <jasper@humppa.nl>
+
+	Add two files found on OpenBSD to the simplevars lens.
+
+2013-01-08  Jasper Lievisse Adriaanse  <jasper@humppa.nl>
+
+	The nagios filters work for Icinga too
+
+	Modify the Nagios lens to handle resources.cfg too.
+	Fixes ticket #312
+
+2013-01-04  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	AptPreferences: adjust a little bit to simplified lens
+
+	AptPreferences: Simplify/Standardize the module
+
+2013-01-04  Jasper Lievisse Adriaanse  <jasper@humppa.nl>
+
+	Make sure the usage shows up properly formated.
+
+	sync another comment with ND definition
+
+	Sync View comment with actual definition.
+
+	Properly document this lens.
+
+	Basic documentation for final apt lenses and sync Menu.txt
+
+	regen Menu.txt after recent changes.
+
+	Move the 'coding' comment to the end of the file to fix the menu entry.
+
+	Fix some more broken module names
+
+	Small fixes to improve documentation:
+	- Declare a module name in test_yum, so that gets taken instead of Yum.lns
+	- Filter is a view, not a variable in ntpd.aug
+	- Properly declare the module name nginx.aug
+
+	Correctly set the module name, and let it actually test the Lightdm lens.
+
+2013-01-04  David Lutterkort  <lutter@redhat.com>
+
+	Xml test (input1): modify to mildly check handling DOS line endings
+
+2013-01-04  Jasper Lievisse Adriaanse  <jasper@humppa.nl>
+
+	Add support for handling the "client-output-buffer-limit" to the Redis lens.
+
+2013-01-03  Jasper Lievisse Adriaanse  <jasper@humppa.nl>
+
+	Some small Rx tweaks: include regexes for octal and hex and simplify ipv4 matching.
+	Fixes ticket #327
+
+	Add a lens for OpenNTPD's config file (ntpd.conf).
+	Extend rx.aug with some helpful regexes while here.
+	Fixes ticket #324
+
+	Adjust the fonts lens' exclusion rule to ignore all README files
+	Fixes ticket #323
+
+2013-01-03  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Quote: improve lens usage
+
+	Quote: lens usage
+
+	Quote: Improve documentation for functions
+
+	Xorg: Fix filter
+
+2013-01-03  Jasper Lievisse Adriaanse  <jasper@humppa.nl>
+
+	Also handle /etc/monitrc
+	Fixes ticket #326
+
+2013-01-03  Jasper Lievisse Adriaanse  <jasper@humppa.nl>
+
+	Remove bogus use of Util.stdexcl.
+	It should only be used for wildcard includes.
+	Add an exclude to Util.stdexcl for "#*#" while here.
+
+	Fixes ticket #325
+
+2013-01-03  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Erlang and Quote are generic lenses
+
+2013-01-02  Jasper Lievisse Adriaanse  <jasper@humppa.nl>
+
+	Add a new lens for OpenBSD's /etc/boot.conf.
+	Fixes ticket #322
+
+2013-01-02  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Networks: networks can have weird submasks, too
+
+	Sysctl: exclude /etc/sysctl.d/README.sysctl
+
+	Sudoers: Allow user aliases in specs
+
+	Systemd: Allow backslashes inside values
+
+	Systemd: Simplify expression
+
+	Systemd: Don't use multiple negates in regexps
+
+2012-12-30  Jasper Lievisse Adriaanse  <jasper@humppa.nl>
+
+	* tests/cutest.c: include sys/wait.h for WIFEXITED and WEXITSTATUS.
+	Fixes ticket #321
+
+2012-12-30  Dominic Cleal  <dcleal@redhat.com>
+
+	Inetd: support IPv6 addresses
+	Fixes ticket #320
+
+2012-12-30  Jasper Lievisse Adriaanse  <jasper@humppa.nl>
+
+	Shellvars: parse /etc/rc.conf.local which is found on OpenBSD.
+	Fixes ticket #320
+
+	Dhclient: on OpenBSD dhclient.conf lives in /etc/dhclient.conf
+	Fixes ticket #320
+
+	Resolv: Add two new views (family and lookup)
+	Fixes ticket #320
+
+2012-12-29  Dominic Cleal  <dcleal@redhat.com>
+
+	* src/augrun.c: fix spelling in defnode help
+
+2012-12-28  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	AptPreferences: Add "n" to pin keys
+
+2012-12-23  Dominic Cleal  <dcleal@redhat.com>
+
+	Xinetd: handle missing values in lists
+	Fixes ticket #307
+
+2012-12-22  Dominic Cleal  <dcleal@redhat.com>
+
+	Update NEWS and AUTHORS
+
+2012-12-21  David Lutterkort  <lutter@redhat.com>
+
+	Version 1.0.0
+
+2012-12-21  Dominic Cleal  <dcleal@redhat.com>
+
+	Krb5: support semicolon comments, allow empty lines within subsections
+	Fixes ticket #288
+
+2012-12-21  Pat Riehecky  <riehecky@fnal.gov>
+
+	Krb5: support host { } subsections inside v4_name_convert, handle multiple arguments to *_enctypes settings, support ticket_lifetime
+	Contains a minor incompatible lens change for permitted_enctypes,
+	default_tgs_enctypes and default_tkt_enctypes settings, where labels are now
+	lower-cased.
+
+	Fixes ticket #274
+
+2012-12-21  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Update NEWS and AUTHORS
+
+	Merge branch 'master' of ssh://git.fedorahosted.org/git/augeas into dev/nginx
+
+	Add Nginx lens to parse /etc/nginx/nginx.conf, bug #319
+
+2012-12-21  David Lutterkort  <lutter@redhat.com>
+
+	* src/Makefile.am: add $(top_builddir)/gnulib/lib to GNULIB_CFLAGS
+	Needed for building under IllumOS
+
+	Fixes https://fedorahosted.org/augeas/ticket/270
+
+2012-12-19  Matthaus Owens  <matthaus@puppetlabs.com>
+
+	Add /etc/puppetlabs/puppet path to puppet lenses
+	In Puppet Enterprise, puppet is rooted in /etc/puppetlabs/puppet instead of
+	/etc/puppet, so that is also a valid location for puppet.conf, fileserver.conf,
+	and auth.conf. This commit also adds /usr/local/etc/puppet/auth.conf as a
+	filter for the puppet auth lens.
+
+2012-12-17  Marc Fournier  <marc.fournier@camptocamp.com>
+
+	Redis: new lens and tests
+
+2012-12-17  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Quote: Add tests for *_nil entries
+
+2012-12-17  Marc Fournier  <marc.fournier@camptocamp.com>
+
+	Add Quote.*quote_opt_nil variables and functions
+	... which are exactly the same as  Quote.*quote_opt, except they don't
+	set quotes by default.
+
+	This patch also completes a couple of existing comments.
+
+2012-12-17  Marc Fournier  <marc.fournier@camptocamp.com>
+
+	augeas.vim: added a couple of keywords recently introduced.
+
+2012-12-17  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Dhcpd: force double quotes for filename attribute, bug #311
+
+2012-12-16  Marc Fournier  <marc.fournier@camptocamp.com>
+
+	Postgresql: properly support quotes
+	Fixes trac#317
+
+2012-12-14  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Postfix_Transport: allow host:port and [host]:port syntaxes, bug #303
+
+	Really test Avahi.lns in test_avahi.aug
+
+	Update NEWS
+
+2012-12-14  Athir Nuaimi  <athir@nuaimi.com>
+
+	Add new Avahi lens to manage /etc/avahi/avahi-daemon.conf
+
+2012-12-14  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Merge branch 'trac#281' of git://github.com/mfournier/augeas into review/pr4
+
+2012-12-14  Marc Fournier  <marc.fournier@camptocamp.com>
+
+	Add a path to pg_hba.aug, fixes Trac ticket #281.
+
+	Htpasswd: new lens and tests
+
+2012-12-13  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Update NEWS
+
+	src/augtool.c: honor --echo in run_args
+
+	src/augtool.c: print_aug_error when run_args fails
+
+	src/augtool.c: run_args is successful if code >= 0, bug #316
+
+2012-12-12  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Update AUTHORS
+
+	Prepare NEWS for 1.0 release
+
+	Add Quote.dquote_spaces and Quote.squote_spaces
+
+	Use Quote.quote_spaces in pg_hba.aug
+
+	Add Quote.quote_spaces
+
+	Automagically manage quotes in pg_hba.aug
+
+2012-12-11  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	pg_hba.aug: Support multiple options (ticket #313)
+
+	Add test for ticket 313
+
+	pg_hba.aug: fix method to avoid clashing with hostname
+
+2012-12-11  Andreas Ntaflos  <daff@pseudoterminal.org>
+
+	Support hostnames/FQDNs and FQDN suffixes in pg_hba.conf
+	In pg_hba.conf the "address" column may also be a hostname, FQDN or part
+	of an FQDN starting with a dot, in addition to IP addresses. This adds
+	support for such hostnames and hostname suffixes.
+
+2012-12-09  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Merge branch 'master' of ssh://git.fedorahosted.org/git/augeas into dev/shellvars_newlines
+
+2012-12-09  Dominic Cleal  <dcleal@redhat.com>
+
+	Shellvars: add locale.conf, vconsole.conf systemd configs
+	Fixes BZ#881841
+
+2012-12-09  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Fix support for empty comments after comments
+
+	shellvars.aug: Fix newlines after comments being mapped as Util.empty
+
+2012-12-06  Dominic Cleal  <dcleal@redhat.com>
+
+	Shellvars: add locale.conf, vconsole.conf systemd configs
+	Fixes BZ#881841
+
+2012-12-03  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Add rsyslog.aug
+
+2012-11-29  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	No need for comment in rabbitmq.aug (managed in erlang.aug)
+
+	Support comments in erlang.aug and rabbitmq.aug
+
+2012-11-28  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Add rabbitmq.aug
+
+	Add erlang.aug
+
+2012-11-22  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Add /etc/audit/auditd.conf to simplevars.aug
+
+2012-11-20  Domen Kožar  <domen@dev.si>
+
+	correctly parse escaped string literals in vim syntax file
+
+2012-11-20  Francois Lebel  <francoislebel@gmail.com>
+
+	Add a lens for logwatch.
+
+2012-11-20  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Add tests for regexp builtin with flag
+
+	Add support for an 'i' flag in regexp builtin function
+
+2012-11-20  David Lutterkort  <lutter@redhat.com>
+
+	* src/pathx.c: pass the number of actual arguments to the func implementation
+
+	* src/pathx.c: match functions by name and arity
+	This makes it possible to have different numbers of arguments for the same
+	function, e.g. count() and count(nodeset)
+
+	* src/pathx.c: disallow ',' in names in path expressions
+	Note that this breaks backwards compatibility, since, when searching for a
+	node 'a,b' you now must write "match a\,b" rather than "match a,b"
+
+2012-11-14  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Add Puppet_Auth lens
+
+2012-11-09  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Add aug_label to retrieve the label from a path.
+
+2012-11-09  David Lutterkort  <lutter@redhat.com>
+
+	Sysconfig: handle end of line comments and semicolons; strip quotes
+	Fixes RHBZ #761246
+
+	square lens: correctly process skeletons during put
+	The current code would identify a L_SQUARE skeleton to match even when it
+	did not, meaning we would not trigger a create in all instances where it
+	was needed.
+
+	Shellvars: add tests for semicolon handling
+
+	* lenses/tests/test_sysconfig.aug: use a variable 'lns' for Sysconfig.lns
+
+	* lenses/tests/test_sysconfig.aug: use a variable 'lns' for Shellvars.lns
+
+	* tests/Makefile.am (lens_tests): add quote test
+
+2012-10-29  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Use the Quote module in dhcpd.aug
+
+	Use the Quote module in openvpn.aug
+
+	Add quote.aug to easily manage quotes
+
+2012-10-27  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	vmware_config: use square lens to manage quotes
+
+2012-10-26  David Lutterkort  <lutter@redhat.com>
+
+	square: properly handle first lens matching empty string
+	The rewriting of the ctype of (square l1 l2 l3) introduced in commit
+	1484afc3 was not correct when the ctype of l1 matched the empty string: the
+	rewritten ctype did not match the empty string any more.
+
+	This patch fixes that by making sure that fa_enumerate includes the empty
+	word if the language contains it.
+
+2012-10-26  Marc Fournier  <marc.fournier@camptocamp.com>
+
+	improved documentation for carbon/mcollective/memcached/thttpd lenses.
+
+2012-10-26  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	VMware_Config accepts values without quotes
+
+2012-10-23  Francis Giraldeau  <francis.giraldeau@gmail.com>
+
+	Xml: support single _and_ double quoted attribute values
+	Fixes RHBZ #799885
+	Fixes ticket #258
+
+2012-10-23  David Lutterkort  <lutter@redhat.com>
+
+	Use precise ctype of a square lens if it is indeed regular
+
+	libfa (fa_enumerate): new function
+	Function to enumerate FA's with a finite language, given a preset limit of
+	words.
+
+	* src/syntax.c (compile_test): print which test failed when missing exception
+	Tests which should produce an exception, but produce a regular value didn't
+	print their line info when they failed.
+
+	* tests/modules/fail_shadow_union.aug: fix unintended test failure
+
+2012-10-19  David Lutterkort  <lutter@redhat.com>
+
+	Gdm: also read /etc/gdm/custom.conf by default
+
+2012-10-19  Filip Andres  <filip.andres@gooddata.com>
+
+	cgconfig.aug adds space between group and id
+
+2012-10-19  David Lutterkort  <lutter@redhat.com>
+
+	Lightdm: new lens and tests
+	Fixes ticket #302
+	Contributed by David Salmen
+
+2012-10-19  jmccann  <jacob.m.mccann@usps.gov>
+
+	Ntp: add tos directive
+	Fixes ticket #297
+
+2012-10-19  David Lutterkort  <lutter@redhat.com>
+
+	Phpvars: support classes and public/var values
+	Fixes ticket #299
+
+	Patch by aheahe
+
+2012-10-19  Marc Fournier  <marc.fournier@camptocamp.com>
+
+	Memcached: new lens and tests
+
+	Thttpd: new lens and tests
+
+	Carbon: new lens and tests for Carbon cache.
+
+	MCollective: new lens and tests
+
+2012-09-24  Dominic Cleal  <dcleal@redhat.com>
+
+	Revert f04d7dfb3fe7c54b0be650e68aa7778eaf02ea66
+	This was a subtle feature which uses counters named after the setting key to
+	index the values beneath it, over all instances of the setting key.  This allows
+	for path expressions such as /files/etc/ssh/sshd/AllowEnv/10 to map to the
+	tenth value, irrespective of how many setting lines they are split over.
+
+	Modprobe: revert inner lens name change, fixes Modules_conf
+	Modules: define own entry regexp as referenced Modprobe inner lens doesn't
+	match file format
+
+2012-09-21  Dominic Cleal  <dcleal@redhat.com>
+
+	Modprobe: support multiline split commands
+	Fixes Ubuntu bug #1054306
+
+2012-09-17  Dominic Cleal  <dcleal@redhat.com>
+
+	Sshd: reset seq counter for each array setting
+
+2012-09-13  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Fix test_syslog.aug
+
+	Capital letters are allowed in tokens in syslog.aug
+
+	Add collectd.aug and associated test
+
+2012-09-10  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Add postfix_virtual.aug and associated test
+
+	Remove /etc/postfix/virtual from postfix_transport.aug
+
+2012-09-04  Dominic Cleal  <dcleal@redhat.com>
+
+	Sshd: permit hyphens in subsystem names
+
+2012-09-03  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Add apt_update_manager.aug and test
+
+	Add vmware_config.aug and test
+
+	Allow empty lines in gtkbookmarks.aug
+
+	Use label instead of seq in gtkbookmarks.aug
+
+	Add gtkbookmarks.aug and test
+
+2012-08-27  Pat Riehecky  <riehecky@fnal.gov>
+
+	Cachefilesd: new lens for /etc/cachefilesd.conf
+
+2012-08-23  jmccann  <jacob.m.mccann@usps.gov>
+
+	fixes #278 multipath: allow devices to override defaults
+
+2012-08-22  Michal Filka  <mfilka@suse.cz>
+
+	Fixed logrotate.aug.
+	    Logrotate accepts integers prefixed by a sign. Added real world
+	    ntp config file example from SLES into test_logrotate.aug.
+
+2012-08-21  Jeroen van Meeuwen (Kolab Systems)  <vanmeeuwen@kolabsys.com>
+
+	Add a lens for Cyrus IMAP configuration file /etc/imapd.conf (includes /etc/imap/*.conf)
+	Fixes ticket #296
+
+2012-08-14  Francis Giraldeau  <francis.giraldeau@gmail.com>
+
+	Generic square lens v4
+	Lens square now takes lenses instead of regular expressions as arguments, as follow:
+
+	  square left body right
+
+	The left and right lenses must accept the same language. The left lens can be
+	either key or del, while the right lens must be del.
+
+	This patch changes the semantic of the square lens and is thus not backward
+	compatible. Modules must be updated accordingly. The definition of the square
+	lens should now be definitive, and later addition may add support for
+	additionnal lenses for left and right sides.
+
+	  * builtin.c: change definition of the square lens.
+	  * get.c: use the AST to recover the left and right strings matched by the
+	    square lens.Regular lenses are handled with regexp registers.
+	  * put.c: the variable state->override is used to indicate to a del part of a
+	    square lens that it should use the provided value instead of the saved
+	    string in the skel or the default value.
+	  * lens.c: change the lns_make_square to match the new structure.
+
+	Update square lens test to use lens arguments instead of regexp. The change
+	consists to replace "square re lens" into "square right lens left", where right
+	and left are lenses. Hence, legacy lens is converted this way:
+
+	Legacy:
+	  let x = square re body
+
+	New definition:
+	  let x =
+		let right = key re in
+		let left = del re "" in
+		square right body left
+
+	This patch splits pass_square.aug into regular and recursive tests. Other tests
+	are added to verify constraints on the square lens arguments and typechecking.
+
+	Finally, this patch updates httpd and xml lens according to square args
+
+	Changes in v2:
+	  * protect arg with parenthesis in child_first and child_last macros
+	  * drop flag in_square, avoid lens copy, drop square_left/right strings
+	    replaced by ast for rec lens and regs for regular lens. This
+	    processing is more general than the previous approach, and thus
+	    will help to extends the square lens more in the future.
+	Changed in v3:
+	  * Split the patch into smaller units
+	Changed in v4:
+	  * Rejoin patches to avoid breaking make check
+
+2012-08-14  Francis Giraldeau  <francis.giraldeau@gmail.com>
+
+	Build AST while visiting the parse v2
+	The AST records the structure of the parse according to the lens tree. The
+	indices of the text matched is recorded for later use.
+
+	Changed in v2:
+	  * Additional checks for correctness
+	  * Create the root node in rec_process()
+	  * Merge ast_add_child() and ast_append()
+
+2012-08-14  Francis Giraldeau  <francis.giraldeau@gmail.com>
+
+	Fix memory leak in dbg_visit
+	dbg_visit() calls format_lens() to display the lens information. The caller of
+	format_lens() must free the memory allocated, just do it.
+
+	Ignore Eclipse settings directory
+
+2012-08-12  Dominic Cleal  <dcleal@redhat.com>
+
+	Simplevars: use to parse /etc/default/grub_installdevice
+	Ticket #290
+
+	Hosts_Access: add hosts_options(5) support
+	Fixes ticket #256
+
+2012-08-12  Dominic Cleal  <dcleal@redhat.com>
+
+	Hosts_Access: permit more client list formats
+	  * whitespace separated lists
+	  * @netgroups
+	  * IPv6 hosts, inc. zone indices
+	  * paths to lists of clients
+	  * wildcards
+
+	Mostly fixes ticket #256
+
+2012-08-11  Dominic Cleal  <dcleal@redhat.com>
+
+	Fix regression in permissions of created files
+	Commit 16387744 changed temporary file creation to use mkstemp, resulting in
+	new files being created with 0600 permissions.  For brand new files created
+	through Augeas, their permissions stayed at 0600 rather than being set by the
+	umask as before.
+
+	  * src/transform.c (transform_save): chmod after creating new files to
+	    permissions implied by the umask
+
+2012-08-11  Dominic Cleal  <dcleal@redhat.com>
+
+	Fix issues reported by clang static analyser
+	  * src/transform.c (text_retrieve): initialise variable before use
+	  * src/transform.c (filter_generate): remove duplicate variable assignment
+	  * src/jmt.c (parse_add_item): ensure return is defined on goto error
+
+	Fix augtool --transform documentation
+	  * src/augtool.c (usage): -t syntax is now same as 'transform' command
+	  * src/augrun.c (cmd_transform_def): improve description
+
+	Arrange commands into groups for better help
+	  * src/augrun.c: create group definitions, move commands into arrays per
+	    group, update help output to iterate over and announce each group
+
+	Ldif: new lens to read LDIF files per RFC2849
+
+	* src/augtool.c (add_transforms): move free() to prevent free(NULL) and run on   each iteration
+
+2012-08-10  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Add a way to specify explict transforms
+	Allow specifying transforms in three different ways:
+	 - an aug_transform API call
+	 - a transform command for aug_srun
+	 - a -t|--transform option to augtool
+
+2012-08-10  David Lutterkort  <lutter@redhat.com>
+
+	* src/augeas.c: use constants for "lens", "incl" and "excl"
+
+2012-08-10  Francis Giraldeau  <francis.giraldeau@gmail.com>
+
+	Fix typo in previous commit
+	Adjust comment and remove duplicated test case for primary statement in
+	dhcpd.conf lens.
+
+	Fix bug #293 primary statement in dhcpd.conf
+	The "primary" statement does not support any arguments, while it should when
+	it's used in the "zone" block statement. The solution is to add the primary
+	statement in the statements that requires a string argument. The primary
+	statement can thus take a value or not, and thus do not cause any ambiguity in
+	the put direction.
+
+2012-08-08  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Add entry_list and entry_list_nocomment to inifile.aug Use entry_list_nocomment in subversion.aug
+
+2012-08-07  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Add aug_rename to rename node labels without moving them in the tree.
+
+2012-08-07  Francis Giraldeau  <francis.giraldeau@gmail.com>
+
+	Escape double quotes when dumping regexp
+	Graphviz DOT is using double quotes to quotes the string of a label. Escape
+	double quotes to avoid parsing errors with graphviz when the regexp of the lens
+	includes double quotes.
+
+2012-08-02  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Update doc/naturaldocs/conf/lenses/Menu.txt
+
+2012-08-01  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Update email address for Raphaël Pinson in AUTHORS
+
+2012-07-31  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Make get_square case insensitive on the ending key.
+
+2012-07-29  Dominic Cleal  <dcleal@redhat.com>
+
+	* src/augrun.c (cmd_retrieve_help): tidy line wrapping
+
+	NetworkManager: support semicolons in values, spaces and brackets in entry names
+
+	* src/transform.c (xread_file): catch failed fopen, e.g. EACCES
+
+	Fix Valgrind memcheck errors
+	  * src/augtool.c (main_loop): free memory allocated by readline
+	  * src/augrun.c (aug_srun): free command opts after use
+
+2012-07-27  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Notify #augeas channel
+
+	Add valgrind test in .travis.yml
+
+	Add Travis CI file
+
+	Shellvars.aug fix empty comments
+
+	Shellvars.aug: Allow double quotes around variables in case statements
+
+	Shellvars.aug: Add shift and exit builtins, with optional args
+
+	Shellvars.aug: Fix empty lines after comments
+
+	Shellvars.aug: Support matching keys in var_action (ticket #290)
+
+	Shellvars.aug: Add dbquot for double bquoted values
+
+	Shellvars.aug: eol_comments must begin with a space char can contain #
+
+	Shellvars.aug: Add bquot and dollar-assigned tests
+
+	shellvars.aug: Allow semi-colons in bquot and dollar_assign Fix wrong test using bquot and eol_comment
+
+	Allow newlines in quoted values
+
+	Add lns_norec to shellvars.aug and fix ambiguities in the lens.
+
+	Fix ambiguity in shellvars.aug by making semi-colons illegal in bquot and arrays.
+
+2012-07-26  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Allow end of line comments in fstab.aug
+
+2012-07-23  Michal Filka  <mfilka@suse.cz>
+
+	Cron: records can be prefixed by '-'.
+
+2012-07-19  Danny Yates  <danny@codeaholics.org>
+
+	vsftpd.aug: Add require_ssl_reuse option
+
+2012-07-19  David Lutterkort  <lutter@redhat.com>
+
+	* augeas.spec.in: add bundled(gnulib) provides
+	Fixes BZ 821745
+
+2012-07-19  Dominic Cleal  <dcleal@redhat.com>
+
+	Prevent cross-mountpoint attacks via .augsave during saving
+	Previously Augeas would open PATH.augsave for writing if a rename from PATH to
+	PATH.augsave failed, then write the file contents in.  Now if the rename fails,
+	it tries to unlink PATH.augsave and open it with O_EXCL first.
+
+	Mountpoints remain permitted at either PATH or PATH.augnew provided
+	/augeas/save/copy_if_rename_fails exists.
+
+	* src/transform.c (clone_file):
+	    add argument to perform unlink and O_EXCL on destination filename after a
+	    rename failure to prevent PATH.augsave being a mountpoint
+	* src/transform.c (transform_save, remove_file):
+	    always try to unlink PATH.augsave if rename fails, only allowing PATH to be
+	    a mountpoint; allow PATH or PATH.augnew to be mountpoints
+	* tests/
+	    test-put-mount: check PATH being a mountpoint is supported
+	    test-put-mount-augnew.sh: check PATH.augnew being a mountpoint is supported
+	    test-put-mount-augsave.sh: check unlink error when PATH.augsave is a mount
+
+	Fixes BZ 772261
+
+2012-07-19  Dominic Cleal  <dcleal@redhat.com>
+
+	Prevent symlink attacks via .augnew during saving
+	Instead of saving into a predictable PATH.augnew file, save into a securely
+	created PATH.augnew.XXXXXX
+
+	* src/transform.c (transform_save):
+	    write changes to a temporary file in the same directory as the destination
+	    (either the file's canonical path or the path of .augnew), before renaming
+
+	* src/transform.c (transfer_file_attrs):
+	    use fchown, fchmod etc. on the same file handles to ensure consistent
+	    permission changes
+
+	* bootstrap: add mkstemp gnulib module
+	* tests/
+	    test-put-symlink-augnew.sh: test symlink attack when writing .augnew
+	    test-put-symlink-augsave.sh: test symlink attack when writing .augsave
+	    test-put-symlink-augtemp.sh: test symlink attack via temp .augnew
+	    test-put-symlink.sh: also test file modification
+
+	Fixes BZ 772257
+
+2012-07-18  Dan Prince  <dprince@redhat.com>
+
+	Pythonpaste: new lens for Python Paste configs.
+	Added a new lense file for Python Paste configs. This is useful
+	for editing a variety of Openstack config files including,
+	Nova api-paste.ini, Glance *.ini files, keystone.conf, and the
+	swift config files.
+
+2012-07-18  David Lutterkort  <lutter@redhat.com>
+
+	Xinetd: slight formatting improvements
+
+	Case-insensitive regexps: fix a problem with number of groups
+	When we expand a regexp to a case-sensitive regexp in regexp_expand_nocase,
+	it is possible that the number of groups in that regexp changes,
+	e.g. /(a)|(b)/i becomes /[AaBb]/. That confuses the parser when that regexp
+	is used in a union or concatenation, since it expects the match following
+	the match for this regexp to be in group 3, not group 1.
+
+	* src/regexp.c (regexp_union_n, regexp_concat_n): fix bad memory access
+	Avoid calling strlen on a possibly unintialized string (since we overwrite
+	the trailing '\0' with a '(' just before calling REALLOC
+
+2012-07-18  Michal Filka  <mfilka@suse.cz>
+
+	made xinetd.aug case insensitive on attribute names
+
+2012-07-18  David Lutterkort  <lutter@redhat.com>
+
+	Update gnulib to commit cabce6b8
+
+2012-07-18  David Lutterkort  <lutter@redhat.com>
+
+	* src/builtin.c (pr_tree): new primitive print_tree
+	Useful in 'put' tests, as in
+
+	  test lns put ".." after
+	    set .. ;
+	    print_tree;
+	    set ..
+	  = ?
+
+2012-07-17  David Lutterkort  <lutter@redhat.com>
+
+	aug_text_store, aug_text_retrieve: fix segfault when passed in node was NULL
+	When the node existed, but had a NULL value, we segfaulted instead of
+	reporting an error. We now report ENOMATCH.
+
+	Fixes https://fedorahosted.org/augeas/ticket/283
+
+2012-07-15  Dominic Cleal  <dcleal@redhat.com>
+
+	Fstab: options field is optional
+
+2012-07-13  Dominic Cleal  <dcleal@redhat.com>
+
+	Authorized_Keys: add more tests
+
+2012-07-13  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Add authorized_keys.aug and associated test.
+
+2012-07-04  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	simplevars.aug: Add /etc/zabbix/*.conf to includes
+
+	simplevars.aug: Allow quotes in variables that do not begin with a quote
+
+2012-06-28  Dominic Cleal  <dcleal@redhat.com>
+
+	Shellvars: exclude directories from /etc/sysconfig/* wildcard
+	This prevents a bug where Augeas maps a directory such as
+	/etc/sysconfig/network-scripts to a lens via a matching transform and fails
+	to save if the user edits /etc/sysconfig/network-scripts/ifcfg-eth0.
+
+2012-06-19  Micah Anderson  <micah@riseup.net>
+
+	escape all possible regular expressions before they are sent to sed
+
+2012-06-12  David Lutterkort  <lutter@redhat.com>
+
+	Modprobe: allow spaces around '=' in option
+	Fixes https://bugzilla.redhat.com/show_bug.cgi?id=826752
+
+2012-06-05  David Lutterkort  <lutter@redhat.com>
+
+	* man/augtool.pod: update mentions of default load path
+
+2012-06-01  Luc Didry  <luc@didry.org>
+
+	Add su logrotate.conf option in logrotate.aug
+
+2012-05-31  David Lutterkort  <lutter@redhat.com>
+
+	Tests for aug_text_store and aug_text_retrieve
+
+	aug_text_store, aug_text_retrieve: expose in augtool and aug_srun
+
+	aug_text_store, aug_text_retrieve: new API functions
+
+	* src/transform.c (text_retrieve): new function to turn tree into text
+
+	* src/transform.c (text_store): new function to write string to tree
+
+	* tests/test-run.c: allow loading of a module with 'use'
+
+2012-05-31  David Lutterkort  <lutter@redhat.com>
+
+	Allow running individual tests with test-run
+	Invoking 'test-run t1 t2 t3' will only run tests t1, t2 and t3
+
+	  * tests/test-xpath.c: move checking if a test is mentioned in argv to
+	    cutest
+	  * tests/cutest.c, tests/cutest.h: add should_run
+	  * Makefile.am: test-xpath now uses cutest.[ch]
+	  * tests/test-run.c (run_tests): check if tests is mentioned on cmd line
+
+2012-05-31  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Add postgresql lens
+
+	Allow eol comments in simplevars.aug
+
+	Add lens for cups
+
+	Add lens for samba's smbusers
+
+2012-05-21  David Lutterkort  <lutter@redhat.com>
+
+	* src/augrun.c (cmd_span): better synopsis
+
+	* tests/run.tests: fix lines with trailing whitespace
+
+	* tests/test-run.c (errtokens): bring in sync with actual error codes
+
+2012-05-17  David Lutterkort  <lutter@redhat.com>
+
+	* src/transform.c (load_file): remove unused variable file
+
+2012-05-16  David Lutterkort  <lutter@redhat.com>
+
+	Fix behavior of set with empty strings
+	  * src/augrun.c (cmd_set, cmd_setm): distinguish between empty string and
+	    NULL value
+	  * tests/run.tests (set-args): adapt to new behavior
+
+2012-05-12  Dominic Cleal  <dcleal@redhat.com>
+
+	* src/try: don't overwrite gdbcmds.txt if it exists
+
+2012-05-11  Dominic Cleal  <dcleal@redhat.com>
+
+	Fstab: handle options with empty values ("password=")
+
+2012-05-06  Tim Bishop  <tim@bishnet.net>
+
+	Puppet, PuppetFileserver: add /usr/local/etc/puppet paths
+
+2012-04-26  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Shellvars: various edge cases in case entries
+
+	AptPreferences: #comments are accepted within entries
+
+	NagiosCfg: /etc/nagios3/commands.cfg and /etc/nagios3/resource.cfg have their own syntax, allow spaces in values.
+
+	/etc/default/whoopsie is an IniFile
+
+	Merge branch 'master' of ssh://git.fedorahosted.org/git/augeas
+
+	Mke2fs: Add support for default_mntopts, enable_periodic_fsck, and auto_64-bit_support.
+
+2012-04-26  Dominic Cleal  <dcleal@redhat.com>
+
+	Make creating NULL value nodes more intuitive
+	* src/augrun.c: add "touch" command to create node if it doesn't exist, make
+	  <VALUE> argument to "set" and "setm" optional
+
+	Fixes ticket #276
+
+2012-04-23  David Lutterkort  <lutter@redhat.com>
+
+	* src/augeas.h: include 'extern "C"' wrapper for C++
+	Fixes https://fedorahosted.org/augeas/ticket/272
+
+	Patch from Igor Pashev
+
+2012-04-22  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Use Sys.getenv("HOME") in dput.aug
+
+2012-04-19  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	PHPVars: map arrays with @arraykey subnodes to make working paths
+
+2012-04-12  Michal Filka  <michal.filka@suse.cz>
+
+	Shellvars: handle bash's implicit concatenation of quoted strings
+
+2012-04-12  Josh  <jokajak@gmail.com>
+
+	Grub: add /boot/grub/grub.conf to transform
+
+2012-04-12  Luc Didry  <luc@didry.org>
+
+	Use Sys.getenv('HOME') in filter instead of ~ since it's not expanded
+
+2012-04-12  Brett Porter  <brett@apache.org>
+
+	Properties: improve handling of whitespace, empty props, and underscores in keys
+	This brings the lens closer to the Java specification
+
+	With help from Carlos Sanchez <csanchez@maestrodev.com> and Dominic Cleal
+	<dcleal@redhat.com>
+
+2012-04-11  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	Use a more standard way of writing LGPL v2+ in lens headers
+
+2012-04-10  Raphaël Pinson  <raphael.pinson@camptocamp.com>
+
+	postfix_transport.aug also applies to virtual (5)
+
+	Add postfix_transport.aug and associated test.
+
+	Add subversion lens and associated test.
+
+	Add networkmanager lens to tests and doc
+
+	Add networkmanager.aug and associated test file.
+
+2012-04-09  Dominic Cleal  <dcleal@redhat.com>
+
+	Sudoers: allow quoted strings in Defaults parameters
+	Fixes bug #263
+
+2012-04-08  Dominic Cleal  <dcleal@redhat.com>
+
+	Debctrl: allow control extensions for Python packages
+	Fixes bug #267
+
+	Debctrl: fixed package paragraph keywords, allow variables for version numbers in dependency lists, allow DM-Upload-Allowed keyword
+	Fixes Debian bug #650887
+
+2012-04-06  Dominic Cleal  <dcleal@redhat.com>
+
+	AUTHORS: updated from recent commits
+
+2012-04-06  Jason Kincl  <jkincl@gmail.com>
+
+	Xymon: new lens for Xymon config files
+	Fixes ticket #266
+
+2012-04-06  Jim Meyering  <meyering@redhat.com>
+
+	compile_exp: don't return an uninitialized pointer upon failure
+	As a result of its improved flow analysis gcc-4.7.0 20111202 reported:
+
+	  syntax.c: In function 'compile_exp':
+	  syntax.c:1694:5: warning: 'v' may be used uninitialized in this \
+	  function [-Wmaybe-uninitialized]
+
+	However, compile_exp calls many functions that return values that are
+	then assigned to "v".  Only two of those had a problem: in each there
+	is an error path by which the returned pointer is not initialized.
+	* src/syntax.c (compile_concat): Initialize "v".
+	(compile_minus): Likewise.
+
+2012-04-04  Duncan Mac-Vicar P  <dmacvicar@suse.de>
+
+	bootloader is also present in shellvars_list, exclude from shellvars.
+
+2012-04-01  Dominic Cleal  <dcleal@redhat.com>
+
+	Sudoers: allow "!" as a type of Defaults entry
+	Fixes Debian bug #650079
+
+	Modprobe: support softdep command
+	Fixes Debian bug #641813
+
+2012-03-29  Dominic Cleal  <dcleal@redhat.com>
+
+	* src/augrun.c (nexttoken): support \t and \n in aug_srun tokens
+	Fixes bug #265
+
+2012-03-23  Raphaël Pinson  <raphink@gmail.com>
+
+	Add netmask to hosts_access.aug
+
+2012-03-18  Dominic Cleal  <dcleal@redhat.com>
+
+	Shellvars: add systemd's /etc/os-release file
+
+	Systemd: new lens to parse systemd unit files
+
+	* src/augeas.c (aug_save): remove loop that added a second iteration around   children of /files, causing multiple saves in newfile and noop modes when   editing under /files/boot
+	Fixes ticket #264
+
+2012-03-17  Dominic Cleal  <dcleal@redhat.com>
+
+	Qpid: new lens to read Apache Qpid daemon/client configs
+	Contributed by Andrew Replogle.
+
+2012-03-12  David Lutterkort  <lutter@redhat.com>
+
+	Make sure reloading discards changes after save with mode 'newfile'
+
+2012-03-10  Dominic Cleal  <dcleal@redhat.com>
+
+	Util: add *.bak and *.old to stdexcl, to match files in /etc/sysconfig
+
+	Fix excl filters that only specify a filename or wildcard
+	  * src/transform.c (transform_validate): only normalise excl paths with
+	    directory separators into absolute paths
+	  * src/transform.c (filter_generate): don't apply root prefix to excl filter
+	    values when only comparing the base filename
+
+	Shellvars: exclude non-shell files in tests/root/etc/sysconfig
+
+	Shellvars: add /etc/selinux/config
+
+2012-03-06  Dominic Cleal  <dcleal@redhat.com>
+
+	Shellvars: include /etc/{default,sysconfig}/* and list exceptions instead
+
+2012-03-03  Tim Mooney  <Tim.Mooney@ndsu.edu>
+
+	src/augtool.c: rename echo to echo_commands to fix differing types reported with Solaris linker
+	Fixes ticket #262
+
+2012-02-24  Dominic Cleal  <dcleal@redhat.com>
+
+	Up2date: change tree to distinguish between empty values and empty lists
+
+	Up2date: change tree to fix ambiguity during put, remove list of known config options and separation of possible values
+
+2012-02-22  Dominic Cleal  <dcleal@redhat.com>
+
+	Protocols: change tree to support protocols named "a/n" and "tp++"
+
+	Shellvars: remove non-shell files, up2date now has a lens, move updatedb.conf to Simplevars
+	Fonts: exclude README
+
+	Sep: add semicolon
+
+	Ntp: allow deprecated 'authenticate' setting
+
+2012-02-21  Raphaël Pinson  <raphink@gmail.com>
+
+	Add up2date.aug and associated test file
+
+2012-02-17  Raphaël Pinson  <raphink@gmail.com>
+
+	Support \r in httpd.aug
+
+	Support \r in comments in util.aug
+
+	Support \r\n in xml.aug
+
+	Do not allow \r in comment_or_eol
+
+	Add Util.doseol
+
+2012-02-13  David Lutterkort  <lutter@redhat.com>
+
+	* src/transform.c (clone_file): do not leak from_fp
+
+2012-02-13  Raphaël Pinson  <raphink@gmail.com>
+
+	Allow commands without full path if they begin with a lowcase letter in sudoers.aug
+
+	Allow = in commands in sudoers.aug (but force ! or / as first character if not an alias)
+
+	Use Build.opt_list in sudoers.aug
+
+2012-02-13  Dominic Cleal  <dcleal@redhat.com>
+
+	Shellvars: add BSD's /etc/rc.conf
+	Fixes ticket #255
+
+2012-02-12  Dominic Cleal  <dcleal@redhat.com>
+
+	Improve aug_srun quoting to permit concatenation and better detect bad quoting
+	* src/augrun.c (nexttoken): permit shell-like concatenation of quoted and
+	  unquoted strings, detect unmatched quotes and raise AUG_ECMDRUN.
+	* tests/run.tests: add lots of tests to cover quoting mismatches, single and
+	  double quote combinations, courtesy of David Schmitt
+
+	Passwd: allow asterisk in password field
+	Fixes ticket #255
+
+	Pam: exclude /etc/pam.d/README
+	Fixes ticket #255
+
+2012-02-10  Raphaël Pinson  <raphink@gmail.com>
+
+	Simplify Sudoers.sto_to_com_user to improve performance. Use more standard constructs.
+
+	Add continued lines to rx.aug and sep.aug
+
+2012-02-09  Raphaël Pinson  <raphink@gmail.com>
+
+	Improve grub.aug's performances slightly
+
+	Improve keepalived.aug: cut typechecking time and resident size by 2.
+
+	Use Cron.shellvar in anacron.aug
+
+	Simplify Cron.key_re to improve typechecking of cron.aug
+
+	Allow # and ; in quoted values in inifile.aug (Fix ticket #243)
+
+2012-02-08  Terence Haddock  <thaddock@tripi.com>
+
+	* lenses/tests/test_iptables.aug: test that we accept blank lines
+
+2012-02-08  Francis Giraldeau  <francis.giraldeau@gmail.com>
+
+	Allocate exception instead of static const value
+	The static const value returned by exn_error() may cause SIGSEGV in case
+	the value is further changed. To avoid this situation, the structure is
+	allocated early in aug_init instead and released in aug_close, and is
+	accessible via aug->error->exn. The resulting exception value can be
+	modified without adverse effect.
+
+2012-02-08  Duncan Mac-Vicar P  <dmacvicar@suse.de>
+
+	Shellvars: autoload some SuSe and RHN specific files
+
+2012-02-07  David Lutterkort  <lutter@redhat.com>
+
+	Add very simplistic leak test
+
+	Fix some memory leaks
+	  * src/augeas.c (tree_from_transform): do not do unneeded strdups which
+	    lead to leaks
+	  * src/lens.h: any lens can carry a jmt when it is recursive; this was a
+	    pretty serious issue which could have lead to memory corruptions, since
+	    struct lens was not right for that
+	  * src/lens.c (free_lens, lens_release): call jmt_free for all lenses
+
+2012-02-07  Raphaël Pinson  <raphink@gmail.com>
+
+	Fix test-save by allowing (empty | comment)* in yum.aug.
+
+2012-02-07  Dominic Cleal  <dcleal@redhat.com>
+
+	CronAllow: remove accompanying test, moved into Simplelines test earlier
+
+2012-02-06  David Lutterkort  <lutter@redhat.com>
+
+	* src/transform.c (transform_save): different errors for parse and put failure
+
+2012-02-06  David Lutterkort  <lutter@redhat.com>
+
+	Graphviz: remove since it can not be typechecked
+	Typechecking for the Graphviz lens requires too much memory right now,
+	which makes it impossible to run 'mke check' on a reasonably sized machine
+	(6GB memory)
+
+	Backing out the lens until we can figure out a way to fix it so that 'make
+	check' works with it in practice.
+
+2012-02-06  Raphaël Pinson  <raphink@gmail.com>
+
+	Disable recursive mode in graphviz.aug since it fails in the put direction.
+
+	Pass Util.empty with entry in Build.block_generic. Fix ambiguity with Util.empty in graphviz.aug.
+
+2012-02-03  Raphaël Pinson  <raphink@gmail.com>
+
+	graphviz.aug: space is optional before options
+
+	graphviz.aug: names can be empty
+
+	Support crazy example in graphviz.aug
+
+	Add a simple graphviz.aug and associated test
+
+	Use Build.block_newlines in keepalived.aug
+
+	Build.block_newlines takes a comment parameter, newline is optional
+
+	Add variables for default delimiters and regexps in build.aug
+
+2012-02-02  David Lutterkort  <lutter@redhat.com>
+
+	* src/transform.c (filter_generate): take root into account for excludes
+	When matching an exclude pattern against a path, only try to match against
+	the part of path after the root. The paths found by globbing include
+	patterns contain the root.
+
+	Fixes bug #252
+
+2012-02-02  Raphaël Pinson  <raphink@gmail.com>
+
+	Improve logrotate, use Build, Rx, Sep
+
+	Add lbracket and rbracket to sep.aug
+
+	Add tests for build.aug
+
+	Add Build.block_newlines and use it in xinetd.aug
+
+	Rewrite xinetd.aug with Build, Sep, Rx
+
+	Allow to set lbracket_re and rbracket_re in Build.block_generic
+
+	Add Util.delim and use it in Sep.space_equal
+
+	Add Build.block_setdefault
+
+	Add default_lbracket and default_rbracket to Build.block_generic
+
+	Add blocks to build.aug, add comment_noindent to util.aug Add test_build.aug
+
+2012-02-01  Raphaël Pinson  <raphink@gmail.com>
+
+	Support dollar assignment ($(bar)) in shellvars.aug
+
+	Parse functions in shellvars.aug
+
+	Shellvars.aug allows multiple elif statements
+
+	Add test_fonts.aug
+
+2012-01-31  Dominic Cleal  <dcleal@redhat.com>
+
+	CronAllow: remove lens, add files to the Simplelines lens
+
+2012-01-31  Raphaël Pinson  <raphink@gmail.com>
+
+	Add fonts.aug
+
+	Add ldso.aug and test
+
+	Fix author
+
+	Add /etc/sysctl.d to sysctl.aug, improve lens and add it to docs.
+
+	Add protocols.aug and associated test
+
+	Add /etc/wgetrc to simplevars.aug
+
+	Add simplelines.aug and test
+
+	Add simplevars.aug and associated test
+
+	Add inputrc.aug and associated test
+
+	Add anacron.aug and associated test
+
+	cowpoke.conf
+
+2012-01-30  Raphaël Pinson  <raphink@gmail.com>
+
+	Ignore allow.pamlist from pam.aug
+
+	Add a few files to shellvars.aug
+
+	Add fuse.aug and associated test
+
+2012-01-27  Dominic Cleal  <dcleal@redhat.com>
+
+	Vfstab: new lens for /etc/vfstab config on Solaris
+
+2012-01-22  Dominic Cleal  <dcleal@redhat.com>
+
+	Automounter: exclude /etc/auto_master for Solaris, small tidyup
+
+	Automounter: exclude /etc/auto.master
+
+	Automaster: change to lowercase for consistency with Automounter
+
+	Automounter: new lens to parse automounter maps (/etc/auto.*)
+
+2012-01-21  Dominic Cleal  <dcleal@redhat.com>
+
+	AutoMaster: new lens to parse autofs auto.master files
+
+	CronAllow: new lens to parse both cron/at allow/deny files
+	Cron: exclude cron allow/deny files
+
+	Nsswitch: remove long list of databases, match by regexp
+
+	PamConf: new lens to parse /etc/pam.conf with the additional service field
+
+	Pam: allow uppercase chars in 'types', remove /etc/pam.conf from filter
+	PamConf: new lens to parse /etc/pam.conf with the additional service field
+
+	Networks: handle multiple missing network octets, fix sequencing of aliases
+
+	Nsswitch: add extra databases used on Solaris
+
+	Shells: permit same-line comments
+
+2012-01-20  Dominic Cleal  <dcleal@redhat.com>
+
+	Netmasks: new lens for parsing /etc/inet/netmasks on Solaris
+
+2012-01-19  Travis Groth  <tgroth@gmail.com>
+
+	Nsswitch: add passwd_compat, group_compat and shadow_compat GNU extensions
+
+2012-01-18  Raphaël Pinson  <raphink@gmail.com>
+
+	Add channels.aug and associated test.
+
+2012-01-14  Dominic Cleal  <dcleal@redhat.com>
+
+	Grub: parse "password --encrypted" properly, add tests for file subnode
+	Fixes ticket #250
+
+2012-01-11  Francis Giraldeau  <francis.giraldeau@gmail.com>
+
+	Fix fatest linking with libfa
+	fatest requires libfa symbols which are not exported by libaugeas library.
+
+2012-01-09  Lubomir Rintel  <lubo.rintel@gooddata.com>
+
+	Correctly parse empty object and arrays in JSON
+	Add a test case.
+	Fix from David Lutterkort <lutter@redhat.com>.
+
+	https://fedorahosted.org/augeas/ticket/248
+
+2012-01-09  Lubomir Rintel  <lubo.rintel@gooddata.com>
+
+	Allow JSON number literals to be followed by whitespace
+	Add a test case.
+
+	Fixes https://fedorahosted.org/augeas/ticket/247
+
+2012-01-09  David Lutterkort  <lutter@redhat.com>
+
+	* build/aux/move-if-change: refresh with latest from gnulib
+	Taken from gnulib commit 1602f0af
+
+2012-01-02  Dominic Cleal  <dcleal@redhat.com>
+
+	* src/augtool.c (main_loop): re-open rl_outstream/stdout only when stdout isn't   a tty (fixes -e -i); use /dev/tty instead of /dev/stdout when re-opening to   prevent permission errors
+	Fixes ticket #241
+
+2011-12-31  Dominic Cleal  <dcleal@redhat.com>
+
+	* tests/test-augtool.sh: fix broken gsed check
+
+2011-12-30  Dominic Cleal  <dcleal@redhat.com>
+
+	Remove Linux-isms so tests can run on Solaris
+	* tests/test-augtool-modify-root.sh: /bin/sh -> /bin/bash
+	* tests/test-augtool.sh: /bin/sh -> /bin/bash, use 'gsed' if available (GNU sed
+	  is required)
+	* tests/test-load.c: don't use GNU sed in-place extension
+	* tests/test-preserve.sh: handle Solaris `ls -il` output
+
+	* bootstrap: add strchrnul gnulib module (for Solaris)
+
+2011-12-24  Jim Meyering  <meyering@redhat.com>
+
+	Don't use variables uninitialized upon error
+	* src/transform.c (filter_generate): Move declarations and
+	  initializations of pathv and pathc to precede possible
+	  "goto error;" via which those variables are used.
+
+2011-12-23  Francis Giraldeau  <francis.giraldeau@gmail.com>
+
+	fix fatest linking
+
+2011-12-19  Raphaël Pinson  <raphink@gmail.com>
+
+	Rebase yum.aug on inifile.aug, support comments (except in lists) Fix ticket #217
+
+	Add @return to shellvars.aug
+
+2011-12-19  Erinn Looney-Triggs  <erinn.looneytriggs@gmail.com>
+
+	Create lens and tests for sssd.conf heavily based on mysql and php lenses.
+
+2011-12-18  Raphaël Pinson  <raphink@gmail.com>
+
+	aliases.aug: commands can be fully enclosed in quotes (Fix ticket #229)
+
+2011-12-18  Erinn Looney-Triggs  <erinn.looneytriggs@gmail.com>
+
+	Add in single-request-reopen into lens and tests.
+
+2011-12-16  Michael Chapman  <mike@very.puzzling.org>
+
+	Add missing argument to escape()
+	Fixes ticket #242.
+
+2011-12-10  Dominic Cleal  <dcleal@redhat.com>
+
+	* src/augeas.c (tree_root_ctx): create context path if it doesn't exist
+
+2011-12-09  Raphaël Pinson  <raphink@gmail.com>
+
+	Add libxml2-devel to requirements in HACKING
+
+2011-12-08  Raphaël Pinson  <raphink@gmail.com>
+
+	Debian-based distributions use /etc/mdadm/mdadm.conf
+
+2011-12-05  Raphaël Pinson  <raphink@gmail.com>
+
+	Support include() in phpvars.aug
+
+	Add unit test for bug #239
+
+	In aug_to_xml: do not replace pathin with '/*' unless the length is 0 or pathin is '/' (Fix ticket #239)
+
+2011-12-03  Richard W.M. Jones  <rjones@redhat.com>
+
+	pkg-config: Augeas requires libxml2.
+
+2011-12-02  David Lutterkort  <lutter@redhat.com>
+
+	Version 0.10.0
+
+2011-12-02  Dominic Cleal  <dcleal@redhat.com>
+
+	Implement escape sequences for whitespace, quotes and square brackets in command arguments to match Puppet provider.
+	  * \<sp> or \<tab> will be escaped if not in quotes, else literal
+	  * \' or \" will be escaped if in the same type of quotes, else literal
+	  * \\ will be escaped
+	  * \[ or \] will be passed through so they're escaped in path expressions
+
+	  * src/augrun.c: implement escape sequences
+	  * tests/run.tests: add covering tests
+
+2011-12-02  Raphaël Pinson  <raphink@gmail.com>
+
+	Add approx.aug and test to Menu.txt
+
+	Document approx.aug
+
+	Fix nocommand as nocomma in test_aliases.aug
+
+	Add documentation to test_aliases.aug
+
+2011-12-01  David Lutterkort  <lutter@redhat.com>
+
+	* src/augtool.c (print_aug_error): print newline after error details
+
+	augtool: rename 'print-xml' to 'dump-xml'
+	That way, 'p' tab-completes to print as before.
+
+	* src/augeas.c (tree_from_transform): handle alloc failure better
+
+	* src/augeas.c (aug_init): make more robust
+	  - propagate errors from aug_set and similar
+	  - only call api_exit if we called api_enter before
+
+	* src/augeas.c (aug_init): pull logic to set up loadpath into separate function
+
+	* src/augeas.c (init_root): properly report out-of-memory
+
+	* tests/test-api.c (testToXml): swap expected/actual values in assertions
+
+	* src/augeas.c (aug_to_xml): rename 'path' attr on root to 'match'
+	The attribute contains a path expression, not just a path.
+
+2011-12-01  David Lutterkort  <lutter@redhat.com>
+
+	Make it possible for aug_init to report initialization errors
+	Sometimes initialization fails for mundane reasons, like syntax errors in
+	lens files. So far, it was not possible for callers to report details for
+	these errors, because they always got a NULL augeas handle back.
+
+	The new flag AUG_NO_ERR_CLOSE causes aug_init to return a handle even if
+	initialization fails, so that callers can use the aug_error* functions to
+	extract error details before calling aug_close.
+
+	  * src/augeas.c (aug_init): return a partially initialized struct augeas
+	    if AUG_NO_ERR_CLOSE is set
+	  * src/augeas.h (aug_flags): add AUG_NO_ERR_CLOSE
+	  * src/augtool.c: call aug_init with AUG_NO_ERR_CLOSE and print errors on
+	    initialization failure
+
+2011-12-01  David Lutterkort  <lutter@redhat.com>
+
+	Update documentation for augtool/augrun and man page
+
+	Adjust more copyright notices
+
+	Fstab: allow ',' in file names
+	Fixes BZ https://bugzilla.redhat.com/show_bug.cgi?id=751342
+
+	* man/augtool.pod: update copyright years, regenerate
+
+2011-12-01  Raphaël Pinson  <raphink@gmail.com>
+
+	Sub::Install is not necessary to override functions in Augeas.pm
+
+	Fix white_spaces into with_spaces in test_faidiskconfig.aug
+
+	Add documentation to test_fai_diskconfig.aug
+
+	Extend copyright to 2011 in src/*
+
+	Add test_xml.aug to the lens Menu.txt
+
+	Improve documentation in test_xml.aug
+
+	Add test_keepalived.aug doc to lens Menu.txt and keepaved.aug
+
+	Add documentation to test_keepalived.aug
+
+	Improve documentation for sep.aug
+
+	Improve documentation for rx.aug
+
+2011-12-01  Dominic Cleal  <dcleal@redhat.com>
+
+	src/augrun.c: fix parsing of commands with trailing whitespace tests/test-run.c: use : to write tests with trailing whitespace
+
+2011-12-01  Raphaël Pinson  <raphink@gmail.com>
+
+	Improve documentation for access.aug and test_access.aug
+
+	Fix examples note in inifile.aug
+
+	Add examples note to reprepro_uploaders.aug
+
+	Finalize doc for test_reprepro_uploaders.aug
+
+2011-12-01  Dominic Cleal  <dcleal@redhat.com>
+
+	Fix path context with trailing slash or whitespace
+
+	Add tests from Puppet's Augeas provider, some commented out until fixed.
+
+2011-12-01  Raphaël Pinson  <raphink@gmail.com>
+
+	Fix test_inifile.aug's typo
+
+	Add documentation to test_inifile.aug
+
+	Better integration of tests in NaturalDocs, verbatim code display in doc.
+
+2011-11-30  Raphaël Pinson  <raphink@gmail.com>
+
+	Add unit tests for aug_to_xml
+
+	libaugeas must now be linked to libxml, too.
+
+2011-11-30  Dominic Cleal  <dcleal@redhat.com>
+
+	* augeas.spec.in: add build req on libxml2-devel
+
+2011-11-29  Raphaël Pinson  <raphink@gmail.com>
+
+	Add an Examples section to reprepro_uploaders.aug's header
+
+	ARG_CHECK errors when condition is met. Invert conditions in aug_to_xml.
+
+2011-11-29  Francis Giraldeau  <francis.giraldeau@gmail.com>
+
+	Sudoers: add more parameter flags/options
+	Fixes bug #143
+
+2011-11-29  Raphaël Pinson  <raphink@gmail.com>
+
+	Add aug_to_xml to public API
+
+2011-11-29  David Lutterkort  <lutter@redhat.com>
+
+	New error code AUG_EBADARG and ARG_CHECK macro
+	Use ARG_CHECK to check arguments passed through the public API for
+	validity; invalid paramters lead to an error of AUG_EBADARG.
+
+	  * src/augeas.h (aug_errcode_t): new error code AUG_EBADARG
+	  * src/augeas.c (errcodes): human-readable text for AUG_EBADARG
+	  * src/errcode.h (ARG_CHECK): new macro
+
+2011-11-29  Raphaël Pinson  <raphink@gmail.com>
+
+	Improve doc in test_reprepro_uploaders.aug and update Menu.txt for lenses.
+
+	Fix parsing of tests in Augeas.pm, add a test doc to test_reprepro.aug
+
+	Fix parsing of 'in[ \t\r\n]+let' in Augeas.pm
+
+2011-11-29  David Lutterkort  <lutter@redhat.com>
+
+	Normalize lens filters to absolute paths
+	It doesn't really make sense to specify relative paths in lens filters; we
+	treat them as absolute to avoid unpleasant surprises for users who think
+	relative paths are relative to AUGEAS_ROOT. With this change, they are.
+
+	Fixes bug #238
+
+2011-11-29  David Lutterkort  <lutter@redhat.com>
+
+	* tests/cutest.c: run one test when CUTEST env var is set
+
+2011-11-29  Raphaël Pinson  <raphink@gmail.com>
+
+	Add support for 'not' in reprepro_uploaders.aug
+
+	Improve CSS for NaturalDocs
+
+2011-11-28  Dominic Cleal  <dcleal@redhat.com>
+
+	augtool: change readline tab completion to be context-aware
+
+	path expressions: prepend context from /augeas/context to all relative paths
+	A path context is prepended to all paths that do not begin at the root,
+	changing relative paths into absolute paths.  The context is stored in
+	/augeas/context and defaults to the value "/files".
+
+2011-11-28  David Lutterkort  <lutter@redhat.com>
+
+	* src/transform.c (load_file): fix segfault when storing span in NULL tree
+
+	* src/syntax.c (print_tree): print something for a NULL tree
+
+2011-11-28  Raphaël Pinson  <raphink@gmail.com>
+
+	Add header to shellvars.aug
+
+	Add Kdump and Ssh to Menu.txt
+
+	Fix NaturalDocs CSS a bit
+
+	Add a Tests and Examples group in naturaldocs
+
+	Improve documentation for reprepro_uploaders.aug
+
+	Add 'contain' subnodes to reprepro_uploaders.aug and improve documentation.
+
+	Simplify logical tree in reprepro_uploaders.aug
+
+	Improve parameter parsing in reprepro_uploaders.aug
+
+	Add reprepro.aug and associated test.
+
+	Fix small type in comment
+
+2011-11-23  Raphaël Pinson  <raphink@gmail.com>
+
+	Add support for until and select loops in shellvars.aug
+
+	Add elif support to shellvars.aug
+
+2011-11-22  Raphaël Pinson  <raphink@gmail.com>
+
+	Add big WARNING to aptconf.aug
+
+	Register modules.aug with naturaldocs
+
+2011-11-22  Tom Limoncelli  <tal@whatexit.org>
+
+	Xendconfsxp: new lens and tests for Xen configuration
+
+2011-11-22  David Lutterkort  <lutter@redhat.com>
+
+	* tests/Makefile.am (lens_tests): add missing tests
+
+2011-11-22  Raphaël Pinson  <raphink@gmail.com>
+
+	Add modules.aug and associated test file (Fix ticket #236)
+
+	Add backuppchosts.aug and test (Fix ticket #233)
+
+	mdadm.aug: dev_device cannot match dev_partitions_re
+
+	Fix test_phpvars.aug as per using Util.empty_c_style
+
+	Clean wrong lines in modprobe.aug's header
+
+	Update tests and documentation for new lenses
+
+	Add desktop.aug and associated test.
+
+	Add aptconf.aug and associated test.
+
+	Use Util.empty_c_style in phpvars.aug and don't map empty comments in Util.comment_multiline
+
+	Add support for case in shellvars.aug
+
+	Add for and while loops to shellvars.aug
+
+	Adapt modules_conf.aug and test file to refect the changes in modprobe.aug
+
+	Refactor modprobe.aug: * Parse commands in install/remove stanzas; * Drop support for include as it is not documented in manpages and no unit tests are shipped.
+
+2011-11-21  Raphaël Pinson  <raphink@gmail.com>
+
+	Fix unpriviliged into unpriviliged in test_postfix_master.aug, too.
+
+	Add one-liner unit test for shellvars.aug
+
+	shellvars.aug: Refactor lens, add end-of-line comment support, if/then/else/fi conditionals, one-liners support
+
+	phpvars.aug: Add test for bash-style comment, improve eol comments, use generic_function in simple_function definition
+
+	Parse /etc/mailname with hostname.aug
+
+	Add hosts_access.aug to parse /etc/hosts.{allow,deny} and associated test.
+
+2011-11-18  Raphaël Pinson  <raphink@gmail.com>
+
+	Double quotes are allowed in variable names in phpvars.aug
+
+	Refactor entries in phpvars.aug
+
+	PHP tags are case-insensitive in phpvars.aug
+
+	Add include_once() to phpvars.aug
+
+	Fix typo in postfix_master.aug (Fix ticket 234)
+
+	Allow empty lines at end of files in phpvars.aug
+
+	Better define() support in phpvars.aug
+
+	Support bash-style comments and define() functions in phpvars.aug
+
+	Implement end-of-line comments in phpvars.aug and add tests. In order to add this, I had to forbig the use of /.*;[ \t]*\/\/.*/ in values. There might be a way to make this regexp more strict to be less intrusive, but I believe this pattern is not very common anyway, so I think it's safe to keep it this way for now.
+
+	Cleanup phpvars.aug, rebase it on sep.aug and util.aug and prepare the way to support end-of-line comments
+
+	Fix comment_multiline and add a test file for util.aug
+
+	Spaces are not mandatory around = in phpvars.aug
+
+	Fix open_php and close_php tags in phpvars.aug (Fix ticket 232)
+
+2011-11-17  Jim Meyering  <jim@meyering.net>
+
+	avoid double-free upon fclose failure
+	  * src/transform.c (transform_save): Upon initial fclose failure, set "fp
+	    = NULL;" so that we don't attempt to free/close "fp" while cleaning up
+	    upon "goto done".
+
+2011-11-17  David Lutterkort  <lutter@redhat.com>
+
+	* lenses/util.aug: do not set caml mode for Emacs
+
+	* lenses/rx.aug: delete trailing whitespace
+
+2011-11-17  Raphaël Pinson  <raphink@gmail.com>
+
+	Parse pam.conf in pam.aug
+
+	Add hostname.aug
+
+	Add networks.aug lens
+
+	Add host_conf.aug lens
+
+	Add flag_line to build.aug
+
+	Add blkid.conf to shellvars.aug
+
+2011-11-16  Raphaël Pinson  <raphink@gmail.com>
+
+	Add doc to grub.aug (ticket 33)
+
+	Support debug flag in keepalived.aug
+
+	Fix origin entries in aptpreferences.aug
+
+2011-11-15  Dominic Cleal  <dcleal@redhat.com>
+
+	Resolv: Permit end-of-line comments
+	Fixes ticket #223
+
+	Krb5: Allow a [pam] section for pam_krb5 (possibly deprecated)
+	Fixes ticket #225
+
+2011-11-15  Roman Rakus  <rrakus@redhat.com>
+
+	Kdump: new lens and tests
+
+2011-11-15  Dominic Cleal  <dcleal@redhat.com>
+
+	aug_srun: add 'insert' and 'move' command aliases to 'ins' and 'mv'
+
+2011-11-15  Michael Chapman  <mike@very.puzzling.org>
+
+	Dhcpd: slashes must be double-quoted
+	In dhcpd.conf, tokens containing slashes must be double-quoted.
+
+	Fixes the following dhcpd error:
+
+	  /etc/dhcpd.conf line 4: filename string expected.
+	  include /
+	          ^
+	  Configuration file errors encountered -- exiting
+
+2011-11-15  Michael Chapman  <mike@very.puzzling.org>
+
+	Access: parse user@host and (group) in users field
+	pam_access matches the hostname in user@host against the system's own
+	hostname, which allows a single access.conf to be shared amongst
+	multiple machines yet still contain per-server rules.
+
+	pam_access also allows group names to be optionally enclosed in
+	parentheses to disambiguate them from user names.
+
+2011-11-15  Michael Chapman  <mike@very.puzzling.org>
+
+	Access: field separator need not be surrounded by spaces
+	For compatibility with the old behaviour and to match the examples in
+	the PAM documentation, new entries are still emitted with spaces.
+
+	Dhcpd: add Red Hat's dhcpd.conf locations
+	RHEL 5 uses /etc/dhcpd.conf.
+	RHEL 6 uses /etc/dhcp/dhcpd.conf.
+
+2011-11-15  David Lutterkort  <lutter@redhat.com>
+
+	Mdadm: use case-insensitive regexps
+
+2011-11-15  David Lutterkort  <lutter@redhat.com>
+
+	* src/fa.c (totalize): handle case-insensitive FA's properly
+	The convention for case-insensitive FA's is that they do not contain any
+	transitions on [A-Z], effectively removing upper case letters from the
+	alphabet.
+
+	totalize used to create transitions into the crash state that did
+	transition on upper case letters, violating the convention.
+
+2011-11-13  David Lutterkort  <lutter@redhat.com>
+
+	* src/builtin.c (regexp_match): new helper to test a regexp
+
+2011-11-13  Matthew Booth  <mbooth@redhat.com>
+
+	Mdadm_conf: new lens for /etc/mdadm.conf
+
+2011-11-13  David Lutterkort  <lutter@redhat.com>
+
+	* lenses/tests/test_iptables.aug: fix syntax error
+
+2011-10-31  Raphaël Pinson  <raphink@gmail.com>
+
+	Allow digits in ipt_match keys (bug #224)
+
+2011-10-18  David Lutterkort  <lutter@redhat.com>
+
+	* src/syntax.c: fix composition of unit and function
+	For a composition with types 'unit ; a -> b' we tricked ourselves into
+	doing function composition, when we should do unit composition.
+
+	* src/syntax.c (type_names): fix order of names
+
+2011-10-17  Michael Chapman  <mike@very.puzzling.org>
+
+	Fix regular expression escaping
+	This patch fixes:
+
+	  /[\/]/
+
+	Previously, this matched either a backslash or a slash, since \/ was not
+	an escape sequence known to unescape(). Now this matches only a slash.
+
+	We pass an extra argument to escape() and unescape() listing the extra
+	characters that should be handled. STR_ESCAPES and RX_ESCAPES provide
+	the extra characters for strings and regexps respectively, and NULL may
+	be passed if no extra characters should be handled.
+
+2011-10-17  David Lutterkort  <lutter@redhat.com>
+
+	Json: fix handling of whitespace
+	We just gobble up whitespace after various expressions as part of the lens
+	processing that expression.
+
+2011-10-14  Raphaël Pinson  <raphink@gmail.com>
+
+	Spaces are allowed before colons in aliases.aug
+
+	Empty options are allowed in exports.aug
+
+	Entries outside Host statements are allowed (though not documented) in ssh.aug
+
+	Allow indentations in array_entry in ssh.aug
+
+	Small improvements to squid.aug. This lens is inconsistent and should probably be deeply reviewed, although that might break compatibility.
+
+	Not really shellvar entries in cron.aug, semi-colons are allowed for email addresses
+
+	Add schroot to tests and doc
+
+	Add schroot.aug lens
+
+2011-10-13  Raphaël Pinson  <raphink@gmail.com>
+
+	Simplify rsyncd.aug and support indented anon entries and records.
+
+2011-10-10  Raphaël Pinson  <raphink@gmail.com>
+
+	Small adjustments in postfix_master.aug
+
+2011-10-10  Michael Chapman  <mike@very.puzzling.org>
+
+	Fix escape sequences in bracket expressions
+	With POSIX extended regexps, escape sequences are not recognised within
+	bracket expressions. Any escape sequences passed through by the
+	unescape() function would be misinterpreted. For instance, the regular
+	expression:
+
+	  /[\.-]/
+
+	matches any of the three characters backslash, dot or hyphen, when the
+	lens author most likely wanted dot or hyphen only.
+
+	This patch cleans up the bracket expressions in all lenses, with the
+	exception of \/ and \\ sequences. These needs to be handled by
+	unescape() directly.
+
+2011-10-10  Michael Chapman  <mike@very.puzzling.org>
+
+	FAI_DiskConfig: Fix invalid escape sequence \s
+	It should be expanded to [ \n\t].
+
+2011-10-10  Michael Chapman  <mike@very.puzzling.org>
+
+	Cron: Fix parsing of numeric fields
+	In:
+
+	  let num = /[0-9\*][0-9\/,-\*]*/
+
+	the hyphen was treated as a range, not a literal character. This
+	erroneously allowed a whole bunch of characters (including all uppercase
+	letters) in numeric fields.
+
+2011-10-10  Michael Chapman  <mike@very.puzzling.org>
+
+	Cgconfig: Fix parsing of group names
+	In:
+
+	  let id = /[a-zA-Z0-9_\-\/\.]+/
+
+	the hyphen was treated as a range, not a literal character.
+
+2011-10-10  Raphaël Pinson  <raphink@gmail.com>
+
+	Revert badly applied series or patches.
+	This reverts commit dc9ef16bc7a4cc45e4d66ea69b4bdf0038e816bb.
+
+2011-10-10  Michael Chapman  <mike@very.puzzling.org>
+
+	Cgconfig: Fix parsing of group names
+	In:
+
+	  let id = /[a-zA-Z0-9_\-\/\.]+/
+
+	the hyphen was treated as a range, not a literal character.
+
+2011-10-06  David Lutterkort  <lutter@redhat.com>
+
+	path expressions: add a function 'int'
+	This makes it possible to do numerical comparisons of node values, for
+	example, 'match /files/etc/group/*[int(gid) < 3]'
+
+2011-10-06  Raphaël Pinson  <raphink@gmail.com>
+
+	Fix cmd_span (ticket #220):
+	 - Retrieve option from tree before using it;
+	 - Invert conditions since we now use streqv.
+
+2011-10-05  Raphaël Pinson  <raphink@gmail.com>
+
+	Replace sep_spc? with sep_opt_spc in bbhosts.aug
+
+2011-10-05  Michael Chapman  <mike@very.puzzling.org>
+
+	Postfix_master: allow commas in commands
+	Postfix daemons accept "-o name=value" to override main.cf configuration
+	parameters, and the value can be a comma-separated value list.
+
+2011-10-05  Raphaël Pinson  <raphink@gmail.com>
+
+	Support \!include in mysql.aug
+
+2011-10-04  Raphaël Pinson  <raphink@gmail.com>
+
+	Various changes to keepalived.aug:  - Implement vrrp_script;  - Make spaces optional before lbracket;  - Support track_interface, track_script and garp_master_delay;  - Add ha_suspend and notify_*;  - Add relinteger to rx.aug and use it in keepalived.aug.
+
+2011-10-03  Raphaël Pinson  <raphink@gmail.com>
+
+	Spaces are mandatory after # in bbhosts.aug
+
+2011-10-01  Marc Fournier  <marc.fournier@camptocamp.com>
+
+	nrpe: fixed #218 - error caused by unused '=' in lens
+
+2011-10-01  Dominic Cleal  <dcleal@redhat.com>
+
+	Multipath: add support for six options in the defaults section:   dev_loss_tmo, max_polling_interval, verbosity,   reassign_maps, fast_io_fail_tmo, async_timeout
+	Fixes ticket #207
+
+2011-09-12  Raphaël Pinson  <raphink@gmail.com>
+
+	Support more ranges in cron.aug
+
+	Flags also can be indented in mysql.aug
+
+2011-09-09  Raphaël Pinson  <raphink@gmail.com>
+
+	Allow indented entries in php.aug
+
+	{ can be followed by spaces in xinetd.aug
+
+	Allow indented entries in mysql.aug
+
+	Allow empty lines after includedir
+
+	includedir statements are not part of sections in mysql.aug
+
+2011-09-07  Raphaël Pinson  <raphink@gmail.com>
+
+	Hooks without any lines are valid in logrotate.aug
+
+	Allow spaces after 'endscript' in logrotate.aug
+
+2011-09-06  Raphaël Pinson  <raphink@gmail.com>
+
+	Various fixes in bbhosts.aug
+
+	Fix empty lines support in fai_diskconfig.aug
+
+2011-09-05  Raphaël Pinson  <raphink@gmail.com>
+
+	Add functionalities, refactor volume by type of disk_config entry and add tests to fai_diskconfig.aug
+
+2011-09-01  David Lutterkort  <lutter@redhat.com>
+
+	* src/pathx.c (nodeset_as_regexp): match nothing if nodeset is empty
+	This makes sure that constructs like 'glob(no_such_node)' or
+	'regexp(no_such_node)' in path expressions never match anything, which is a
+	better default than the empty regexp that was produced before.
+
+2011-09-01  Francis Giraldeau  <francis.giraldeau@gmail.com>
+
+	Fix run single command with autosave
+	This patch fixes autosave in the case only one command is provided as
+	arguments and adds a test that checks proper handling of this case.
+
+2011-08-31  Francis Giraldeau  <francis.giraldeau@gmail.com>
+
+	Disable autoload transform for the fai_diskconfig
+	Autoload transform with only standard exclude makes failing the glob_for_lens
+	xpath test. fai_diskconfig does this. As a temporary fix, we disable transform
+	from fai_diskconfig.
+
+2011-08-31  Francis Giraldeau  <francis.giraldeau@gmail.com>
+
+	Adding ssh client lens
+	This lens parses the client side configuration directives of ssh.
+
+	Thanks to Jiri Suchomel for this contribution.
+
+2011-08-30  Raphaël Pinson  <raphink@gmail.com>
+
+	Add fai_diskconfig.aug and test
+
+	Allow semicolons in shellvars.aug, add non regression test
+
+2011-08-21  Francis Giraldeau  <francis.giraldeau@gmail.com>
+
+	New stunnel lens
+	Stunnel provides SSL tunnel for daemons. The configuration is based on the ini
+	file syntax.
+
+	Thanks to Oliver Beattie that contributed this lens.
+
+2011-08-16  David Lutterkort  <lutter@redhat.com>
+
+	Fix uses of Spacevars as a utility module
+	  - add Build.key_ws_value to do the same as Spacevars.entry
+	  - expand uses of (Spacevars.lns l) into the more explicit (comment|empty|l)*
+
+	This fixes test breakage introduced by commit 4840c7ab
+
+2011-08-11  Francis Giraldeau  <francis.giraldeau@gmail.com>
+
+	Proper test for eolwhite space handling
+	By reformating eol of pupperfileserver test, it's possible to make both git and
+	unit test working.
+
+2011-08-11  Francis Giraldeau  <francis.giraldeau@gmail.com>
+
+	Remove trailing white spaces from puppet test
+	Trailing white lines are valid in a puppet file, but the test is rejected when
+	pushing to master git repository.
+
+	remote: lenses/tests/test_puppetfileserver.aug:20: trailing whitespace.
+	remote: +allow *
+	remote: error: hook declined to update refs/heads/master
+	 ! [remote rejected] master -> master (hook declined)
+
+	Removing white space for now.
+
+2011-08-11  Dominic Cleal  <dcleal@redhat.com>
+
+	PuppetFileserver: support same-line comments and trailing whitespace (2.7.3rc1)
+	Fixes ticket #214
+
+2011-08-10  David Lutterkort  <lutter@redhat.com>
+
+	Spacevars: rename toplevel lens to lns
+	Leave simple_lns as an alias for backwards compatibility
+
+2011-08-08  David Lutterkort  <lutter@redhat.com>
+
+	* examples/fadot.c: accept -h option to print usage
+
+2011-07-25  David Lutterkort  <lutter@redhat.com>
+
+	.gitignore: ignore tests/test-run
+
+	Version 0.9.0
+
+	Minor fixes to make distcheck pass
+
+2011-07-22  David Lutterkort  <lutter@redhat.com>
+
+	path expressions: parse [expr1 or expr2] correctly
+	Since commit ea010d85, we would interpret the predicate [e1 or e2] as
+	matching any node with a child labelled 'e1 or e2'; this patch restores the
+	semantics that the predicate is true if either e1 or e2 are true. It does
+	the same for [e1 and e2]
+
+	Of course, this is a heinous hack.
+
+2011-07-22  David Lutterkort  <lutter@redhat.com>
+
+	Migrate tests from test-mv.sh into run.tests
+
+	aug_srun: new API call
+
+	aug_mv: report EMVDESC if move would move a node into its descendant
+
+	path expressions: produce straight augeas errors when it makes sense
+	Some errors, especially matching no nodes or multiple nodes in
+	pathx_expand_tree can be directly translated to AUG_ENOMATCH and
+	AUG_EMMATCH, and there's no need to give pathx details about the error
+
+	Fix some of the errors reported by coverity
+	These are some of the errors by running coverity on augeas 0.8.0
+
+2011-07-18  Mathieu Arnold  <mat@FreeBSD.org>
+
+	Aliases: allow spaces and commas in aliases; add docs
+
+2011-07-11  Dominic Cleal  <dcleal@redhat.com>
+
+	Sudoers: support users:groups format in a Runas_Spec line for sudo -g
+	Fixes ticket #211
+
+2011-07-11  David Lutterkort  <lutter@redhat.com>
+
+	* tests/test-bug-1.sh: fix test
+	The test caused an augtool failure for all the wrong reasons
+
+2011-07-06  David Lutterkort  <lutter@redhat.com>
+
+	Php: include files from Zend community edition
+	Fixes ticket #210
+
+2011-07-06  Craig Dunn  <craig@craigdunn.org>
+
+	Properties: new lens for Java properties files
+	Fixes ticket #194
+
+2011-07-01  Dominic Cleal  <dcleal@redhat.com>
+
+	Grub: allow "bootfs" Solaris/ZFS extension for dataset name
+	Fixes ticket #201
+
+2011-07-01  John Morrissey  <jwm@horde.net>
+
+	Spacevars: add two more filse to parse by default
+	Fixes ticket #202
+
+2011-07-01  David Lutterkort  <lutter@redhat.com>
+
+	Interpret escape sequences in function regexp() in path expressions
+	The wildcard character '.' in regular expressions, just as in the rest of
+	Augeas, does not match an end of line. It is therefore crucial to be able
+	to write '(.|\n)' to match any character, including newlines.
+
+	  * src/regexp.h: (make_regexp_unescape): new function; (make_regexp_dup)
+	    removed
+	  * src/regexp.c: (make_regexp_unescape): new function; (make_regexp_dup)
+	    removed
+	  * src/pathx.c: (nodeset_as_regexp, func_regexp_or_glob): use
+	                  make_regexp_unescape
+
+2011-06-29  Dominic Cleal  <dcleal@redhat.com>
+
+	Sudoers: add CSW paths, /opt/csw/etc and /etc/opt/csw/sudoers
+
+	Sudoers: allow same-line comments
+	Fixes ticket #206
+
+2011-06-29  Dominic Cleal  <dcleal@redhat.com>
+
+	Util: allow comment_or_eol to match empty comments containing only whitespace
+	Services: add test for line with a whitespace-only comment
+
+	Fixes ticket #205
+
+2011-06-29  David Lutterkort  <lutter@redhat.com>
+
+	* tests/test-bug-1.sh: fix broken logrotate file
+
+2011-06-08  Raphaël Pinson  <raphink@gmail.com>
+
+	Implement multiline values in inifile.aug
+
+2011-05-14  David Lutterkort  <lutter@redhat.com>
+
+	* src/augeas.c (static_nodes): add list of pathx functions to /augeas/version
+
+2011-05-12  David Lutterkort  <lutter@redhat.com>
+
+	Grub: allow kernel path to start with a device like (hd0,0)
+	Fixes ticket #199
+
+	* examples/fadot.c: include <config.h>, link against GNULIB
+
+2011-05-10  David Lutterkort  <lutter@redhat.com>
+
+	tests: expand what the valgrind target runs
+
+	* src/pathx.c: rename CHECK_ERROR{,_RET0} to RET{,0}_ON_ERROR
+	This should make it harder to misuse them and cause memory leaks
+
+	* src/pathx.c (ns_from_locpath, parse_relative_location_path): free memory on error
+
+	* tests/test-xpath.c: allow running individual tests from the command line
+
+	* src/pathx.c: fix leaking of function arguments
+
+	path expressions: allow concatenating strings and regexps with '+'
+
+	path expressions: add operator '!~'
+
+	path expressions: add 'glob' function that constructs regexps from globs
+
+	regexp: add make_regexp_from_glob to convert globs to regexps
+
+	regexp: add convenience function make_regexp_dup
+
+	path expressions: allow passing a nodeset to function regexp
+
+	* src/pathx.c (check_app): allow overloaded functions
+	Make it possible to have multiple functions with the same name, but
+	different signatures. All variants of a function must have the same arity,
+	they can only differ in their return type and the types of the arguments.
+
+	Keep a dummy struct info in struct error for convenience
+	  * src/errcode.h (struct error): at a info member
+	  * src/augeas.c (aug_init): set up the struct info in struct error;
+	    (aug_close): free the struct info in struct error
+
+	* src/augtool: store history in ~/.augeas/history
+
+2011-05-04  David Lutterkort  <lutter@redhat.com>
+
+	Xorg: accept InputClass section
+
+2011-05-03  David Lutterkort  <lutter@redhat.com>
+
+	Xorg: autoload from /etc/X11/xorg.conf.d/*.conf
+	Based on patch by manugupta
+
+	Fixes bug #197
+
+2011-04-29  David Lutterkort  <lutter@redhat.com>
+
+	test root: add a few more files
+
+2011-04-29  David Lutterkort  <lutter@redhat.com>
+
+	path expressions: allow whitespace inside names
+	This makes the path expression '/files/etc/foo bar/baz' legal, i.e. it is
+	no longer necessary to escape whitespace in path expressions.
+
+	Fixes BZ 700608
+
 2011-04-15  David Lutterkort  <lutter@redhat.com>
+
+	Version 0.8.1
 
 	Iptables: handle --tcp-flags
 	Fixes bug #157
@@ -32,6 +3816,8 @@
 	continuation lines as found in interfaces.aug
 
 	Enable the test for continuation lines in test_httpd.aug
+
+2011-03-25  Bill Pemberton  <wfp5p@virginia.edu>
 
 	Add /etc/httpd/conf/httpd.conf to the filter list for httpd.aug
 
@@ -77,6 +3863,8 @@
 	Fix bug #187
 
 	Thanks to thefoxbox for the enhancement
+
+2011-03-17  Francis Giraldeau  <francis.giraldeau@gmail.com>
 
 	Fix unmatch bracket causes segfault in augtool.c
 	When command is parsed in augtool, function nexttoken verify that path has
@@ -169,12 +3957,16 @@
 
 	Version 0.8.0
 
+2011-02-23  David Lutterkort  <lutter@redhat.com>
+
 	Fix compile errors found by gcc 4.6.0
 	There were several places that caused the new 'variable assigned but not
 	used' warning.
 
 	The struct lens also contained the member jmt twice; it is now only
 	available for L_REC lenses.
+
+2011-02-23  David Lutterkort  <lutter@redhat.com>
 
 	* src/info.h: include stdlib so we can use uint
 
@@ -303,6 +4095,8 @@
 	  * Fix copy/paste error about config files
 	  * Added filters for Fedora and RHEL
 
+2011-01-25  Francis Giraldeau  <francis.giraldeau@gmail.com>
+
 	Add Httpd lens
 	The Httpd lens parses Apache Web server configuration according to the manual.
 
@@ -363,6 +4157,8 @@
 	for that file up for loading. This reduces the runtime of the tests from ~
 	30s on my machine to under 2s.
 
+2011-01-11  David Lutterkort  <lutter@redhat.com>
+
 	Test that getting and setting the root node works
 	This tests the same thing that test-get.sh tests, but in a much more
 	reliable fashion
@@ -385,6 +4181,8 @@
 2011-01-10  Raphaël Pinson  <raphink@gmail.com>
 
 	Refactor augtool.c to use only readline
+
+2011-01-10  Raphaël Pinson  <raphink@gmail.com>
 
 	augtool: add --autosave option
 	Additional changes to augtool:
@@ -511,6 +4309,8 @@
 
 	Enable square lens in dump_lens
 
+2010-12-10  Francis Giraldeau  <francis.giraldeau@usherbrooke.ca>
+
 	Add square lens to language
 	The new primitive square lens allows to handle XML like open and close tags.
 	It takes 2 arguments, a regexp for the tag and a lens for the content. The
@@ -571,6 +4371,8 @@
 	comment entries.  Adapt tests for shellvars and services to take this new
 	behaviour in consideration.
 
+2010-11-19  Raphaël Pinson  <raphink@gmail.com>
+
 	Add "indomU" Debian setting to grub.aug (Fix ticket #162)
 
 	Allow "\" style newlines in syslog.aug and add corresponding test (Fix ticket #161).
@@ -609,6 +4411,8 @@
 2010-11-18  David Lutterkort  <lutter@redhat.com>
 
 	* tests/Makefile.am (lens_tests): add tests for new lenses
+
+2010-11-18  David Lutterkort  <lutter@redhat.com>
 
 	Krb5 (realm_re, app_re): allow digits in realm names
 	Still makes the incorrect assumption that realm names start with an upper
@@ -817,6 +4621,8 @@
 
 	* src/try: add an optioj to strace augtool
 
+2010-09-09  David Lutterkort  <lutter@redhat.com>
+
 	Properly record the new mtime of a saved file in the tree
 	transform_save used to pass an incorrect file name to add_file_info (the
 	name was missing the root prefix), leading to an mitme of 0 for all saved
@@ -860,6 +4666,8 @@
 
 	Version 0.7.3
 
+2010-08-06  David Lutterkort  <lutter@redhat.com>
+
 	Fix behavior of aug_defnode
 	  (1) Make sure that the definition of the variable is recorded under
 	      /augeas/variables
@@ -883,6 +4691,8 @@
 	  * augeas.c (pathx_aug_parse): renamed, add optional arg for a different
 	    root
 
+2010-08-05  David Lutterkort  <lutter@redhat.com>
+
 	Fix BZ 613967 - memory corruption on reloading externally modified file
 	The problem was that when we replaced the old tree for a file with the new
 	one we just read from the file, the replace operation did not update
@@ -896,6 +4706,8 @@
 	  * src/transform.c (load_file): adapt to new prototype for tree_replace
 	  * tests/test-load.c (testReloadExternalMod): test that we do not segfault
 	    when a file was modified externally
+
+2010-08-05  David Lutterkort  <lutter@redhat.com>
 
 	Test root: mimick the setup of grub config files on Fedora more closely
 	  * root/etc/grub.conf: symlink to root/boot/grub/grub.conf
@@ -939,6 +4751,8 @@
 	The lens doesn't autoload any files yet, though we should consider moving
 	most of the files that Shellvars loads over to this lens.
 
+2010-07-23  David Lutterkort  <lutter@redhat.com>
+
 	* src/lens.c (lns_check_rec): allow 'let rec' with regular RHS
 	If the user writes 'let rec l = rhs' and the RHS does not mention l, just
 	mark the lens as regular and carry on.
@@ -947,6 +4761,8 @@
 
 	* src/syntax.c (load_module_file): make sure we report an error
 
+2010-07-21  David Lutterkort  <lutter@redhat.com>
+
 	Fix segfault in glue routines; add test for the fix
 	The tree_*_glue functions did not set the error struct when parsing a path;
 	this caused a segfault when trying to insert before/after a non-existant
@@ -954,6 +4770,8 @@
 	was NULL.
 
 	Fixes bug #129
+
+2010-07-21  David Lutterkort  <lutter@redhat.com>
 
 	* src/syntax.c (compile_test): reset errors at the end of the test
 	Otherwise, we can't have tests succeed after tests failed intentionally (by
@@ -996,6 +4814,8 @@
 	obliterating the tree and filling it with the latest from disk. This
 	includes throwing away unsaved changes or trees that have been deleted.
 
+2010-06-29  David Lutterkort  <lutter@redhat.com>
+
 	Add utility tree_store_value to avoid unnecessary strdup's
 	  * src/internal.h (tree_store_value): add prototype
 	  * src/augeas.c (tree_store_value): new function; (tree_set_value): use
@@ -1005,11 +4825,15 @@
 	  * src/augeas.c (tree_clean): remove 'static'
 	  * src/internal.h (tree_clean): add prototype
 
+2010-06-29  David Lutterkort  <lutter@redhat.com>
+
 	Add xstrtoint64 to internal.[ch]
 	The implementation is directly from libvirt
 
 	  * src/internal.h (xstrtoint64): add prototype
 	  * src/internal.c (xstrtoint64): add impl
+
+2010-06-29  David Lutterkort  <lutter@redhat.com>
 
 	* src/test-load.c (testLoadSave): work off a writable /etc/hosts
 	This addresses a FIXME that could lead to use not detecting incorrect behavior
@@ -1019,6 +4843,8 @@
 	  * tests/cutest.c (run): add impl
 	  * tests/test-save.c (run): remove
 
+2010-06-29  David Lutterkort  <lutter@redhat.com>
+
 	Redefine all variables upon load
 	This is a slight change in behavior: before, we used to just discard the
 	contents of all variables upon load. Now, we redefine variables by
@@ -1026,6 +4852,8 @@
 
 	The change in behavior is backwards compatible, since at worst, users will
 	redefine variables themselves after an aug_load
+
+2010-06-29  David Lutterkort  <lutter@redhat.com>
 
 	* src/augeas.c (aug_init): create /augeas/variables on startup
 
@@ -1137,12 +4965,16 @@
 
 	File was reported in bug #122
 
+2010-04-21  David Lutterkort  <lutter@redhat.com>
+
 	tests: make most tests work on Solaris
 	The test scripts are full of bashisms; removed some of them, though for
 	most, just changed the shell from /bin/sh to /bin/bash; removing bashisms
 	will need to be addressed.
 
 	Tests now mostly pass (82/85) on the OpenCSW Solaris 5.10 build machine
+
+2010-04-21  David Lutterkort  <lutter@redhat.com>
 
 	* tests/test-save.c: use proper includes for WIFEXITED
 	Without them, the build fails on FreeBSD
@@ -1157,6 +4989,8 @@
 	character.
 
 	Debctrl: whitespace cleanup, no functional change
+
+2010-04-20  David Lutterkort  <lutter@redhat.com>
 
 	* src/fa.c (re_iter_as_string): escape literal '|'
 	When turning a FA back to a string, a literal '|' needs to be output as '\|'
@@ -1174,6 +5008,8 @@
 	Fixes bug #120
 
 	* src/augtool.c: report an error when 'get' fails
+
+2010-04-19  David Lutterkort  <lutter@redhat.com>
 
 	aug_get: return -1 when multiple nodes match
 	This fixes breakage in the API contract for aug_get, introduced in commit
@@ -1194,10 +5030,14 @@
 	distinguish between internal errors, syntax errors and successful parses
 	properly.
 
+2010-04-16  David Lutterkort  <lutter@redhat.com>
+
 	* src/get.c (visit_exit): handle L_MAYBE
 	Added test to tests/modules/pass_simple_recursion.aug, lens 'maybe'
 
 	Fixes bug #119
+
+2010-04-16  David Lutterkort  <lutter@redhat.com>
 
 	* src/jmt.c (build_tree): print debug output for build_nullable
 
@@ -1355,12 +5195,16 @@
 
 	* src/fa.c (parse_int): flag not parsing anything as an error
 
+2010-02-08  David Lutterkort  <lutter@redhat.com>
+
 	* src/jmt.c: add caller filtering
 	Caller filtering is needed to weed out seemingly ambiguous parse trees (see
 	Section 5.3 of Jim/Mandelbaum's paper)
 
 	Also adds two pathological lenses and tests to
 	pass_simple_recursion.aug. Those tests fail without caller filtering.
+
+2010-02-08  David Lutterkort  <lutter@redhat.com>
 
 	* AUTHORS: reformatted
 
@@ -1389,12 +5233,16 @@
 
 	Bug reported by Matt Palmer
 
+2010-01-27  David Lutterkort  <lutter@redhat.com>
+
 	* src/get.c (no_match_error): initialize lname
 	Otherwise, gcc complains about a possibly uninitialized value with -O2
 
 2010-01-25  David Lutterkort  <lutter@redhat.com>
 
 	Test for using a recursive lens inside other lenses
+
+2010-01-25  David Lutterkort  <lutter@redhat.com>
 
 	* src/get.c: handle recursive lenses that are not L_REC
 	Since any lens that uses an L_REC is itself recursive, the distinction
@@ -1403,6 +5251,8 @@
 	rec_process will also build the jmt if it does not exist yet
 
 	Fixes ticket #100
+
+2010-01-25  David Lutterkort  <lutter@redhat.com>
 
 	Properly handle lenses that use L_REC lenses
 	In constructs involving a recursive lens, we need to take the body of the
@@ -1418,7 +5268,11 @@
 	  * src/jmt.c: when building the jmt, consider L_REC as long as it's not
 	    internal
 
+2010-01-25  David Lutterkort  <lutter@redhat.com>
+
 	* src/jmt.c (print_grammar): recurse into L_REC if they are not rec_internal
+
+2010-01-25  David Lutterkort  <lutter@redhat.com>
 
 	* src/jmt.c (jmt_visit): allow for toplevel lenses that are not L_REC
 	To reconstruct the parse of a lens that is not L_REC, but uses L_REC,
@@ -1432,6 +5286,8 @@
 	To start reconstruction, we now start with collecting the list of children
 	of the root of the parse tree; the Earley graph does not contain an item
 	for that, which makes this operation slightly special.
+
+2010-01-25  David Lutterkort  <lutter@redhat.com>
 
 	* src/lens.c: propagate rec_internal in the body of an L_REC
 
@@ -1476,6 +5332,8 @@
 	allowed if the first expression is of type unit, i.e. '() ; something' is
 	legal.
 
+2010-01-15  David Lutterkort  <lutter@redhat.com>
+
 	Language: allow '_' as an identifier that is never bound
 	  The expression
 	    let _ = something
@@ -1483,6 +5341,8 @@
 
 	  * src/lexer.l (LID): allow leading underscore
 	  * src/syntax.c (bind, bind_type): do not bind '_'
+
+2010-01-15  David Lutterkort  <lutter@redhat.com>
 
 	New primitive lens 'value'
 	In analogy to 'label', this lens allows setting the value of a tree node to
@@ -1495,6 +5355,8 @@
 	Json: lens and tests for generic Json files
 
 	Tests for recursive (context free) lenses
+
+2010-01-14  David Lutterkort  <lutter@redhat.com>
 
 	Syntax for recursive lenses
 	Add a 'let rec' construct; the syntax should be considered experimental and
@@ -1512,6 +5374,8 @@
 	  * src/syntax.h: make free_term available, constant for name
 	    of let_check_rec within the interpreter
 	  * src/syntax.c (free_term): now extern, not static
+
+2010-01-14  David Lutterkort  <lutter@redhat.com>
 
 	* src/get.c (get_rec, parse_rec): get/parse for recursive lenses
 
@@ -1533,6 +5397,8 @@
 
 	* src/lens.h: add a recursive lens combinator
 
+2010-01-14  David Lutterkort  <lutter@redhat.com>
+
 	A simple debug facility
 	Debugging is disabled by default. When configured with --enable-debug=yes,
 	Augeas will look at runtime at the environment variable AUGEAS_DEBUG, which
@@ -1544,6 +5410,8 @@
 	  * configure.ac: add --enable-debug option
 	  * src/internal.h (debugging, debug_file): new functions
 	  * src/internal.c (debugging, debug_file): new functions
+
+2010-01-14  David Lutterkort  <lutter@redhat.com>
 
 	struct error: add pointer back to struct augeas
 
@@ -1583,12 +5451,16 @@
 
 	* src/lens.c (str_to_fa): remove FIXME's and use proper error reporting
 
+2010-01-13  David Lutterkort  <lutter@redhat.com>
+
 	Support for case-insensitive regexps
 	Add nocase argument to make_regexp, and adjust all uses of make_regexp to
 	pass that in. For concatenation and union of regexps we have to expand
 	case-insensitive regexps when they are mixed with case-sensitive regexps.
 
 	Adjust all uses of make_regexp.
+
+2010-01-13  David Lutterkort  <lutter@redhat.com>
 
 	Add fa_expand_nocase to libfa
 
@@ -1617,6 +5489,8 @@
 	    be enclosed in quotes if they have spaces with predicates, e.g. you can
 	    now type 'get /foo[ last() ]'
 
+2010-01-07  David Lutterkort  <lutter@redhat.com>
+
 	Record an error if more than one lens tries to load a file
 	  * src/transform.c (file_info): new function; (transform_load): detect if
 	    more than one lens tries to load a file and record error in
@@ -1626,6 +5500,8 @@
 	  * src/transform.c (file_name_path): new function; (load_file): use
 	    file_name_path
 
+2010-01-07  David Lutterkort  <lutter@redhat.com>
+
 	Change the metadata for individual files
 	Record the name of the lens used to load the file in the lens node
 	underneath /augeas/files/$PATH; the location info of the lens is kept in
@@ -1634,6 +5510,8 @@
 	  * src/transform.c (add_file_info): change what we keep underneath the
 	    lens node
 	  * tests/xpath.tests (lircd-ancestor): adapt to metadata change
+
+2010-01-07  David Lutterkort  <lutter@redhat.com>
 
 	* src/transform.c (add_file_info): manipulate tree directly
 	Going through public functions like aug_set is silly, and causes all kinds
@@ -1653,11 +5531,15 @@
 	  * src/transfrom.h (xfm_lens_name): add prototype
 	  * src/transform.c (xfm_lens_name): new function
 
+2010-01-07  David Lutterkort  <lutter@redhat.com>
+
 	Tree functions to find/create a node with a path expression
 	Internal counterparts to aug_get and aug_set
 
 	  * src/internal.h (tree_find, tree_find_cr): new prototypes
 	  * src/augeas.c (tree_find, tree_find_cr): new functions
+
+2010-01-07  David Lutterkort  <lutter@redhat.com>
 
 	* src/internal.h: make various tree management functions available
 
@@ -1675,11 +5557,15 @@
 
 	Fixes bug #98
 
+2010-01-05  David Lutterkort  <lutter@redhat.com>
+
 	New error code AUG_ENOLENS
 	Indicates failure to look a lens up by name from /augeas/load/*/lens
 
 	  * src/augeas.h (aug_errcode_t): new value AUG_ENOLENS
 	  * src/augeas.c (errcodes): new entry for AUG_ENOLENS
+
+2010-01-05  David Lutterkort  <lutter@redhat.com>
 
 	* src/lens.c (lens_release): tolerate a NULL lens
 
@@ -1704,6 +5590,8 @@
 2009-12-18  David Lutterkort  <lutter@redhat.com>
 
 	* src/builtin.c (lens_get, lens_put): propagate errors as exceptions
+
+2009-12-18  David Lutterkort  <lutter@redhat.com>
 
 	More convenience macros for errors
 	Add BUG_ON and ERR_RET macros for reporting internal errors
@@ -1767,9 +5655,13 @@
 
 	Fixes ticket #93
 
+2009-11-25  David Lutterkort  <lutter@redhat.com>
+
 	* src/lexer.l: include errcode.h; fix bad use of report_error
 
 	* src/errcode.c: include stdarg.h
+
+2009-11-25  David Lutterkort  <lutter@redhat.com>
 
 	Cron: variable names can contain '_' etc.
 	Use Shellvars.key_re for consistency.
@@ -1837,6 +5729,8 @@
 
 	* test/Makefile.am (TEST_ENVIRONMENT): set LANG to a non-C locale
 
+2009-11-10  David Lutterkort  <lutter@redhat.com>
+
 	Remove character ranges from regexps if we are not in the C locale
 	Since re_compile_pattern uses the current locale when expanding character
 	ranges like [a-z], we need to be careful that such ranges are expanded in
@@ -1854,9 +5748,13 @@
 	Fixes ticket #35 for systems that do not have uselocale (for systems with
 	uselocale, the fix is commit 07b6a880)
 
+2009-11-10  David Lutterkort  <lutter@redhat.com>
+
 	libfa: new function fa_expand_char_ranges
 
 	Calls to __aug_load_module need to go through api_entry/api_exit
+
+2009-11-10  David Lutterkort  <lutter@redhat.com>
 
 	Switch to C locale on API entry on systems that have uselocale
 	Since we need to do all our operations (especially regexp matching) in the
@@ -1910,6 +5808,8 @@
 
 	Fixes ticket #89
 
+2009-10-21  David Lutterkort  <lutter@redhat.com>
+
 	* src/pathx.c (clone_nodeset): properly set size of the clone
 	The size of the clone is the number of nodes in the original nodeset, not
 	the size of the original nodeset.
@@ -1924,12 +5824,16 @@
 	Wine: new lens and test
 	Lens for parsing textual Windows registry files
 
+2009-10-20  David Lutterkort  <lutter@redhat.com>
+
 	Pam: allow '-' before type
 	The type field in a pam.d file can start with a '-' to indicate that
 	missing the module should not cause an error. The '-' is now mapped into
 	the tree as a separate node 'optional'
 
 	Bug reported by Shannon Hughes
+
+2009-10-20  David Lutterkort  <lutter@redhat.com>
 
 	* test/Makefile.am (lens_tests): add lens-ethers.sh
 
@@ -1968,6 +5872,8 @@
 	  * lenses/lokkit.aug (trust): new lens; (entry): use trust
 	  * lenses/rx.aug (device_name): new regexp
 	  * lenses/tests/test_lokkit.aug: new test for more permissive device names
+
+2009-10-09  David Lutterkort  <lutter@redhat.com>
 
 	Lokkit.forward_port: add missing eol
 	Also adjust test_lokkit.aug since we're not getting a spurious empty entry
@@ -2056,12 +5962,16 @@
 
 	* src/regexp.c (regexp_compile): do not print anything on error
 
+2009-09-21  David Lutterkort  <lutter@redhat.com>
+
 	Split regexps, info and strings out of syntax.[ch]
 	  * Move struct string and struct info and related functions into info.[ch]
 	  * Move headers for regexp.c into new file regexp.h
 
 	This makes it easier to reuse these outside of syntax.[ch] - including
 	syntax.h in get.c and put.c was way too much anyway.
+
+2009-09-21  David Lutterkort  <lutter@redhat.com>
 
 	aug_match, aug_mv: return -1 when pathx evaluation fails
 
@@ -2149,6 +6059,8 @@
 	e.g. when the original file is bindmounted - in that situation, we have to
 	copy.
 
+2009-09-03  David Lutterkort  <lutter@redhat.com>
+
 	* src/syntax.c (print_value): use print_tree instead of dump_tree
 
 2009-09-02  David Lutterkort  <lutter@redhat.com>
@@ -2178,12 +6090,16 @@
 	The tests strips optional quotes and puts them back (or creates them) as
 	needed, only depending on the value of the tree node.
 
+2009-08-31  David Lutterkort  <lutter@redhat.com>
+
 	Match trees on label and value, not just label
 	We still only use one level in the tree for matching in the put direction,
 	but take the values of nodes into account.
 
 	We had fail_ tests in place to document the deficiency of the tree matcher,
 	but with that deficiency gone, these now become passing tests.
+
+2009-08-31  David Lutterkort  <lutter@redhat.com>
 
 	Restrict the alphabet of a regexp
 
@@ -2209,11 +6125,15 @@
 
 	* src/builtin.c (tree_clear_glue): primitive clear function for use in tests
 
+2009-08-31  David Lutterkort  <lutter@redhat.com>
+
 	Utility function xasprintf
 	Like asprintf, but don't leave first arg in limbo on error
 
 	*  src/internal.h (xasprintf): new prototype
 	*  src/internal.c (xasprintf): new function
+
+2009-08-31  David Lutterkort  <lutter@redhat.com>
 
 	regexp_release: allow NULL regexp
 
@@ -2249,6 +6169,8 @@
 
 	Fixes bug #79
 
+2009-08-10  David Lutterkort  <lutter@redhat.com>
+
 	Pass symtab explicitly into pathx_symtab_remove_descendants
 
 2009-08-06  David Lutterkort  <lutter@redhat.com>
@@ -2260,6 +6182,8 @@
 	  * .gitignore: ignore tests/test-save
 
 	Fixes bug #78
+
+2009-08-06  David Lutterkort  <lutter@redhat.com>
 
 	* src/transform.c (add_file_info): change what we store about a file
 	For a file FILE, we now only record the path and the info for the lens;
@@ -2277,9 +6201,13 @@
 	The id wasn't useful to anybody, and the lens info is useful for debugging
 	at best
 
+2009-08-06  David Lutterkort  <lutter@redhat.com>
+
 	* src/transform.c (add_file_info): minor cleanup
 	  - Rename add_load_info to add_file_info
 	  - Eliminate filename argument, since it's redundant
+
+2009-08-06  David Lutterkort  <lutter@redhat.com>
 
 	defnode: when creating new node, put it in the nodeset
 	When a new node is created, e.g. with 'defnode x "/foo[0 = 1]"' we used to
@@ -2326,6 +6254,8 @@
 	as it does not know what types to expect, it stores a bare string. This
 	will include quote marks.
 
+2009-08-04  Matthew Booth  <mbooth@redhat.com>
+
 	Add more specific entry handlers to xorg.conf
 	Additionally handle:
 	* Driver
@@ -2338,6 +6268,8 @@
 	The advantage of having a specific handler is that it knows more about what
 	values are valid. For example, with this patch Driver will not accept an
 	unquoted value, which would cause the X server not to start.
+
+2009-08-04  Matthew Booth  <mbooth@redhat.com>
 
 	Parse more directives in xorg.conf
 	The default xorg.conf generated by pyxf86config on Red Hat/Fedora systems
@@ -2399,6 +6331,8 @@
 
 	Fixes bug #72 reported by Micah
 
+2009-07-08  David Lutterkort  <lutter@redhat.com>
+
 	Shellvars: allow backticks as quote characters
 	  * lenses/shellvars.aug (simple_value): allow backticks as quotes
 	  * lenses/tests/test_shellvars.aug: add tests
@@ -2419,14 +6353,20 @@
 
 	Fixes part of bug #67 reported by Micah
 
+2009-07-08  David Lutterkort  <lutter@redhat.com>
+
 	Logrotate: make owner/group in create statement optional
 	  * lenses/logrotate.aug (create): make mode/owner/group optional
 	  * lenses/test/test_logrotate.aug: add tests
 
 	Fixes part of bug #67 reported by Micah
 
+2009-07-08  David Lutterkort  <lutter@redhat.com>
+
 	* configure.ac: use AC_SYS_LARGEFILE
 	Suggested by Jeff Johnson <n3npq@mac.com>
+
+2009-07-08  David Lutterkort  <lutter@redhat.com>
 
 	* src/augeas.c (init_root): when root0 == "", use "/" as root
 	When an empty string is passed as root0, make sure we do not make an
@@ -2504,11 +6444,15 @@
 
 	Fixes part of ticket #66
 
+2009-06-11  Anders F Bj�rklund  <afb@users.sourceforge.net>
+
 	configuration: check whether rl_completion_matches is available
 	That function is missing on OS/X; we substitute it with a dummy if readline
 	does not provide it.
 
 	Fixes part of ticket #66
+
+2009-06-11  Anders F Bj�rklund  <afb@users.sourceforge.net>
 
 	* src/augtool.c: add missing include for ctype.h
 	Part of fix for ticket #66
@@ -2551,6 +6495,8 @@
 	Whitespace cleanup (no functional change)
 	Remove trailing whitespace
 
+2009-05-29  David Lutterkort  <lutter@redhat.com>
+
 	Ntp: support more commands
 	* process 'broadcastdelay'
 	* process enable/disable flags
@@ -2559,6 +6505,8 @@
 	Minor amount of code cleanup
 
 	Fixes bug #62, reported by Frank Sweetser
+
+2009-05-29  David Lutterkort  <lutter@redhat.com>
 
 	Fix grammar docs (production for PrimaryExpr was wrong)
 
@@ -2624,6 +6572,8 @@
 	Cron: new lens and test
 	Parses /etc/crontab and /etc/cron.d
 
+2009-04-08  Raphael Pinson  <raphink@gmail.com>
+
 	Sudoers: allow backslashes inside sto_to_com and sto_to_com_user
 	This patch fixes ticket #60 which reports the possible usage of
 	backslashes in sudoers aliases (for use with e.g. Windows resources).
@@ -2633,6 +6583,8 @@
 
 	Additionally, add a line with backslashes in test_sudoers to prevent
 	regressions.
+
+2009-04-08  Raphael Pinson  <raphink@gmail.com>
 
 	Xinetd: map comments using Util.comment
 
@@ -2684,6 +6636,8 @@
 	Changes Aliases, Exports, Fstab, Group, and Monit
 
 	Also exposes comments in /etc/aliases as #comment nodes
+
+2009-04-03  Raphael Pinson  <raphink@gmail.com>
 
 	New utility modules Build, Rx, and Sep
 
@@ -2742,6 +6696,8 @@
 
 	Thanks to Nate Foster for the inspiration of this
 
+2009-03-25  David Lutterkort  <lutter@redhat.com>
+
 	Sudoers: produce at most one negate node
 	Even if there are multiple '!' signs, only produce one negate node.
 
@@ -2775,6 +6731,8 @@
 	easy for other packages to override lenses we ship: when they are installed
 	into $(datadir)/augeas/lenses, they are automatically preferred over the
 	ones we ship.
+
+2009-03-24  David Lutterkort  <lutter@redhat.com>
 
 	New API call aug_defnode and augtool command defnode
 	It's common that we want to define a variable to reference /foo/bar, and
@@ -2914,6 +6872,8 @@
 
 	* src/fa.h: use 'struct fa *' instead of fa_t
 
+2009-03-13  David Lutterkort  <lutter@redhat.com>
+
 	* src/augeas.c: fix handling of dirty flag
 	Under some circumstances, we did not properly propagate the dirty flag up
 	the tree, leading to files that were not saved even though they should have
@@ -2921,6 +6881,8 @@
 
 	This also removes two full sweeps over the tree for dirty handling, and now
 	only touches nodes that are/need to be marked dirty.
+
+2009-03-13  David Lutterkort  <lutter@redhat.com>
 
 	* Makefile.maint: different setup at home
 
@@ -2956,6 +6918,8 @@
 2009-03-09  Francois Deppierraz  <francois.deppierraz@camptocamp.com>
 
 	Test the Debian Lenny sample squid.conf
+
+2009-03-09  Francois Deppierraz  <francois.deppierraz@camptocamp.com>
 
 	Add a bunch of keywords available on squid-2.7-STABLE6 or squid-3.HEAD-20090308.
 	The keywords list was generated by the following command:
@@ -3013,12 +6977,16 @@
 
 	* src/pathx.c: make sure ['foo' != 'foo'] is false
 
+2009-03-02  David Lutterkort  <lutter@redhat.com>
+
 	* src/pathx.c: handle names with '.' properly
 	Make sure that a component ina path expression like '.bar' is parsed as a
 	single step (name), and not as the self axis '.' followed by some
 	garbage.
 
 	Bug reported by Jan Kupec
+
+2009-03-02  David Lutterkort  <lutter@redhat.com>
 
 	* src/pathx.c: it is an error if we don't consume the whole expression
 
@@ -3087,11 +7055,15 @@
 
 	* src/pathx.c: allow '=' and '!=' of numbers
 
+2009-02-18  David Lutterkort  <lutter@redhat.com>
+
 	* src/pathx.c: fix matching multiple predicates
 	We used to evaluate /path[pred1][last()] wrong - last() must match the last
 	node in the nodeset /path[pred1], not the last node in the nodeset /path.
 
 	This requires that we compute nodesets explicitly.
+
+2009-02-18  David Lutterkort  <lutter@redhat.com>
 
 	Logrotate: small fixes
 	* recognize 'yearly' schedule
@@ -3182,10 +7154,14 @@
 	The typecheck is redundant (we already do that when running lens tests) and
 	really slow
 
+2009-02-06  David Lutterkort  <lutter@redhat.com>
+
 	Grub: process 'savedefault' in boot stanza
 	Also, allow keywords to be preceded by whitespace
 
 	Fixes ticket #36
+
+2009-02-06  David Lutterkort  <lutter@redhat.com>
 
 	Minor whitespace cleanup
 
@@ -3246,6 +7222,8 @@
 	* pathx_next does not need an explicit argument for the current
 	  tree node any more
 
+2009-01-30  David Lutterkort  <lutter@redhat.com>
+
 	Expand the grammar for path expressions
 	* add predicates based on labels and values
 	* allow path expressions in predicates, e.g. '/foo/bar[../baz = "7"]'
@@ -3256,6 +7234,8 @@
 	syntax of the path expression and is statically type checked.
 
 	Also add tests to check path expression evaluation
+
+2009-01-30  David Lutterkort  <lutter@redhat.com>
 
 	Use absolute paths in lens tests when manipulating the tree
 	Paths that start with a number (like '1/ipaddr') are ambiguous in the new
@@ -3415,6 +7395,8 @@
 	Segments do not need to track the tree node where they matched anymore,
 	since we can get the same information by following parent pointers.
 
+2008-12-23  David Lutterkort  <lutter@redhat.com>
+
 	Make finding the parent and siblings of a node uniform
 	All nodes (including the root) now have a parent node, so
 	that the start of the list of siblings can be found as
@@ -3423,6 +7405,8 @@
 	All 'standalone' trees now have a fake root, called 'origin' whose
 	children are the real root nodes. Another way to look at this is
 	that the tree is now edge-labeled.
+
+2008-12-23  David Lutterkort  <lutter@redhat.com>
 
 	Rename seg_siblings to tree_siblings
 
@@ -3628,6 +7612,8 @@
 	Logrotate: add dateext flag
 	Patch by Sean E. Millichamp
 
+2008-09-22  David Lutterkort  <dlutter@redhat.com>
+
 	Various changes to the NaturalDocs support
 	This patch changes a few things around in the NaturalDocs support:
 
@@ -3756,6 +7742,8 @@
 	There's no need to construct an FA to check if a regular expression matches
 	the empty string.
 
+2008-09-03  David Lutterkort  <dlutter@redhat.com>
+
 	Properly typecheck the '?' operator
 	The '?' operator was completely missing a typecheck for the atype. The
 	check must make sure that neither the ctype nor the atype match the empty
@@ -3802,6 +7790,8 @@
 
 	Script to run lens tests through Valgrind
 	We don't run this as part of 'make check' since it's _very_ slow.
+
+2008-08-27  David Lutterkort  <dlutter@redhat.com>
 
 	Dhclient: change some defaults for del
 	This is really a bug in how string literals are unescaped by the lexer, but
@@ -3870,11 +7860,15 @@
 
 	Shellvars: one more cornercase with double quoted strings
 
+2008-08-15  David Lutterkort  <dlutter@redhat.com>
+
 	Shellvars: much improved handling
 	- handle single and double quoted strings correctly
 	- parse arrays into a subtree
 
 	Inspired by a chat and preliminary work by nahamu
+
+2008-08-15  David Lutterkort  <dlutter@redhat.com>
 
 	skel_instance_of: remove pointless check
 	There is no point in trying to match against skel->text for a store lens
@@ -3893,6 +7887,8 @@
 	might have to remove the list entry that aug->tree is pointing to.
 
 	Added test in test-mv.sh to test that moving at the root level works.
+
+2008-08-14  David Lutterkort  <dlutter@redhat.com>
 
 	Module names are treated case-insensitively
 	Before, if you had a module 'Mod' in file 'mod.aug' and requested variable
@@ -3987,6 +7983,8 @@
 
 	Test for continuation lines
 
+2008-08-11  David Lutterkort  <dlutter@redhat.com>
+
 	Posix ERE compliant escaping
 	Posix extended regular expressions treat a backslash outside of a character
 	class always as an escape character, with the character sequence '\\x'
@@ -4012,6 +8010,8 @@
 	by a sequence) or when all entries fall under one key, adding an entry to a
 	dict is O(log n).
 
+2008-08-09  David Lutterkort  <dlutter@redhat.com>
+
 	Don't use registers in split_iter
 	The data in the registers was never used, calculating it causes some
 	overhead in the matcher.
@@ -4025,6 +8025,8 @@
 	inside a leaf node. In that case, we know that there is no possible split,
 	and therefore can save the trouble of calling regexp_match.
 
+2008-08-08  David Lutterkort  <dlutter@redhat.com>
+
 	Avoid O(n^2) runtime by appending to lists in constant time
 	The data structure used to keep track of successive matches of an iterated
 	lens, a split list, was being appended to by traversing the list for each
@@ -4036,6 +8038,8 @@
 
 	Dicts still have that problem - they need to be changed to hash tables to
 	address this issue.
+
+2008-08-08  David Lutterkort  <dlutter@redhat.com>
 
 	Add list_reverse and list_tail_cons
 	list_reverse reverses a list in place. list_tail_cons appends to a list in
@@ -4054,6 +8058,8 @@
 	libaugeas, we also bump the minor version, since we just added aug_mv to
 	the interface.
 
+2008-08-07  David Lutterkort  <dlutter@redhat.com>
+
 	Check that 'put' fails when invalid tree entries are present
 	put_quant_star and create_quant_star did not compare the part of the tree
 	they should transform against the part of the tree they actually
@@ -4067,6 +8073,8 @@
 	test failure.
 
 	Fixes bug https://fedorahosted.org/augeas/ticket/1
+
+2008-08-07  David Lutterkort  <dlutter@redhat.com>
 
 	Return an exit status from augtool
 	augtool will return a non-zero exit status if any command issued
@@ -4202,6 +8210,8 @@
 
 	Added tag release-0.2.1 for changeset 13fdcd9bb18a
 
+2008-07-17  David Lutterkort  <dlutter@redhat.com>
+
 	aliases.aug: Do not require whitespace after commas
 	It's perfectly fine to have an alias like 'alias: target1,target2'
 
@@ -4213,6 +8223,8 @@
 	Inserting a node as the new first child was completely broken.
 
 	Bug reported by Raphael Pinson.
+
+2008-07-16  David Lutterkort  <dlutter@redhat.com>
 
 	Add support for 'insert' in unit tests
 	Two new primitives 'insa' (insert after) and 'insb' (insert before) are
@@ -4241,6 +8253,8 @@
 
 	Most of this fix suggested by Jim Meyering, I only touched it up a little
 	(and no doubt introduced all the bugs).
+
+2008-07-07  David Lutterkort  <dlutter@redhat.com>
 
 	Check for NULL values in the put direction of store
 	This is now flagged as an error instead of causing a segfault.
@@ -4281,6 +8295,8 @@
 
 	Reported by Jason Dobies
 
+2008-06-13  David Lutterkort  <dlutter@redhat.com>
+
 	Produce more helpful errors
 	The previous check whether we could proces the entire input was too crude
 	and produced the unhelpful error message "Get could not process entire
@@ -4297,6 +8313,8 @@
 	Process /etc/sysconfig/selinux
 	Patch by Alan Pevec
 
+2008-06-12  David Lutterkort  <dlutter@redhat.com>
+
 	Fix segfault when aug_init/close are called multiple times
 	The way we cached the regexp '[0-9]+/' was totally botched. We now allocate
 	the pattern statically in memory and pin it to protect it from being freed,
@@ -4307,6 +8325,8 @@
 2008-06-06  David Lutterkort  <dlutter@redhat.com>
 
 	Initialize out parameters
+
+2008-06-06  David Lutterkort  <dlutter@redhat.com>
 
 	Change struct fields of type (const char *) to (char *)
 	There were many places where struct fields were declared (const char *) but
@@ -4335,6 +8355,8 @@
 	system includes use _STDLIB_H_; that makes Bison think malloc/free have not
 	been declared yet and it goes and does that. gcc then complains about the
 	duplicate declaration.
+
+2008-06-03  David Lutterkort  <dlutter@redhat.com>
 
 	Infrastructure and import of gnulib modules
 	We do not keep the gnulib sources in our own repo. Instead, autogen.sh now
@@ -4498,6 +8520,8 @@
 
 	Add dependency on ref.h
 
+2008-05-16  David Lutterkort  <dlutter@redhat.com>
+
 	Get rid of compiled regexps earlier
 	After we're done with a transform, release the memory used by compiled
 	regexps; storage for compiled regexps accounts for the lion's share of
@@ -4580,6 +8604,8 @@
 	broke collect into separate subfunctions so we can see better when one of
 	them becomes a bottleneck.
 
+2008-05-13  David Lutterkort  <dlutter@redhat.com>
+
 	Stricter skeleton instance check for del and store
 	Besides having the right tag, del and store match a skeleton only if the
 	text for that skeleton also matches their regexp.
@@ -4601,12 +8627,16 @@
 
 	Use the new '-' operator for key_re
 
+2008-05-09  David Lutterkort  <dlutter@redhat.com>
+
 	Add subtraction of regular expressions to the language
 	It is now possible to say something like
 
 	  let re = /[a-z]+/ - "baseurl"
 
 	The '-' operator is only defined between regexps.
+
+2008-05-09  David Lutterkort  <dlutter@redhat.com>
 
 	Add REGEXP_MINUS; move REGEXP_TO_FA to regexp.c
 
@@ -4617,6 +8647,8 @@
 	Store character sets as bitsets
 	Also clean up the definition of the bitset type and make the bitset_*
 	functions const correct
+
+2008-05-09  David Lutterkort  <dlutter@redhat.com>
 
 	Add fa_as_regexp that converts an automaton back to a regexp
 	During conversion from FA to regexp, our FA mutates into a 'generalized
@@ -4641,11 +8673,15 @@
 
 	Safer memory allocation from libvirt
 
+2008-05-08  David Lutterkort  <dlutter@redhat.com>
+
 	Fix a rather embarrassing #ifdef problem
 	When __GNUC__ was not defined, a big chunk of internal.h was suppressed
 	that is not compiler dependent.
 
 	Also, add ATTRIBUTE_PURE macro.
+
+2008-05-08  David Lutterkort  <dlutter@redhat.com>
 
 	Switch to using unsigned char internally
 	Since we use chars as indices into arrays in some cases, it is simpler to
@@ -4655,6 +8691,8 @@
 
 	There were also cases where we iterated over chars using a char, which was
 	prone to silent overflow.
+
+2008-05-08  David Lutterkort  <dlutter@redhat.com>
 
 	Fix mistaken assignments in asserts
 	Reported by Jeff Johnson
@@ -4666,6 +8704,8 @@
 	instead that expands to nothing unless HASH_DEBUG_VERIFY is defined.
 
 	Patch by Jim Meyering
+
+2008-05-06  David Lutterkort  <dlutter@redhat.com>
 
 	Small fixes to the specfile
 	Suggested by Michael Schwendt
@@ -4683,6 +8723,8 @@
 
 	Be more consistent in how NULL labels are printed
 
+2008-05-05  David Lutterkort  <dlutter@redhat.com>
+
 	Suppress assert of hash_verify
 	Doing the assert(hash_verify(hash)) at various places in hash.c is very
 	expensive and slows things down considerably when assertions are turned
@@ -4691,12 +8733,16 @@
 	Rather than turning assertions off globally, only do the hash_verify
 	asserts when they are explicitly requested by defining HASH_DEBUG_VERIFY
 
+2008-05-05  David Lutterkort  <dlutter@redhat.com>
+
 	Do not minimize freshly created regexps
 	The minimization imposes a serious performance penalty, and is generally
 	not needed.
 
 	This also exposes a bug in fa_overlap; for acceptToAccept to work properly,
 	it needs to be passed a deterministic automaton.
+
+2008-05-05  David Lutterkort  <dlutter@redhat.com>
 
 	Fix containment check
 	Checking for FA2\FA1 being empty was plain silly; this check is a little
@@ -4725,6 +8771,8 @@
 	Ultimately, it would be better if we definedfor each of them which
 	variables are actually going to be looked at (together with some
 	restrictions on possible values)
+
+2008-04-30  David Lutterkort  <dlutter@redhat.com>
 
 	Test files for various /etc/sysconfig files
 	The next commit will add a lens for handling shell var style files in
@@ -4759,6 +8807,8 @@
 	the edge going from a parent to its child, but root has no parent, and
 	therefore "/" does not really make sense.
 
+2008-04-25  David Lutterkort  <dlutter@redhat.com>
+
 	Split multiple baseurl's in a yum file into multiple baseurl nodes
 	With this, the schema for yum config files may now contain nodes like
 	  { "section"
@@ -4783,6 +8833,8 @@
 
 	This change fixes that and adds a test to demonstrate the problem.
 
+2008-04-24  David Lutterkort  <dlutter@redhat.com>
+
 	Fix ref counting error in lns_make_plus
 	We burnt the passed-in ownership of L when constructing STAR; also, since
 	we unref STAR at the end, we need to take ownership of STAR->LENS when
@@ -4796,11 +8848,15 @@
 	Processing of Apt's sources files
 	Contributed by Dean Wilson
 
+2008-04-24  David Lutterkort  <dlutter@redhat.com>
+
 	Make sure install preserves timestamps
 	Avoids getting into trouble with the .aug files in augeas-libs on multilib
 	when installing more than one arch.
 
 	See http://fedoraproject.org/wiki/PackagingDrafts/MultilibTricks
+
+2008-04-24  David Lutterkort  <dlutter@redhat.com>
 
 	Remove trailing whitespace from the end of lines
 	No functional change, only formatting.
@@ -4815,13 +8871,19 @@
 
 	Add todo file for low-level tasks that don't make sense on the website
 
+2008-04-23  David Lutterkort  <dlutter@redhat.com>
+
 	Split libraries into a -libs package
 	This also includes the files in /usr/share/augeas, since they are read by
 	the library and control how configuration files are processed.
 
 	Patch provided by Harald Hoyer
 
+2008-04-23  David Lutterkort  <dlutter@redhat.com>
+
 	Include the augtool manpage as doc in the RPM
+
+2008-04-23  David Lutterkort  <dlutter@redhat.com>
 
 	Don't die on NULL entries in args
 	There is no guarantee that parseline will fill all of args with strings,
@@ -4830,6 +8892,8 @@
 
 	Also, parseline initializes all args as NULL now to guard against garbage
 	pointers accumulating from previous uses.
+
+2008-04-23  David Lutterkort  <dlutter@redhat.com>
 
 	Don't complain about missing optional args
 	For example, both 'print' and 'print PATH' are legal. Make sure we accept
@@ -4854,11 +8918,15 @@
 
 	Clean up the error path in load_file; free the loaded text in transform_load
 
+2008-04-22  David Lutterkort  <dlutter@redhat.com>
+
 	Use fread_file_lim to read entire files
 	The function is taken verbatim from libvirt's util.c, and due to show up in
 	gnulib soon.
 
 	Also, make read_file return a char * instead of the silly const char *.
+
+2008-04-22  David Lutterkort  <dlutter@redhat.com>
 
 	Check the return value from hash_create
 
@@ -4887,11 +8955,15 @@
 
 	Propagate failure of transform_save up
 
+2008-04-21  David Lutterkort  <dlutter@redhat.com>
+
 	Sync compiler warnings with latest from libvirt
 	This should avoid build failures seen on Debian, caused by
 	-fstack-protector
 
 	Also fix build failure caused by addition of -Wformat-security
+
+2008-04-21  David Lutterkort  <dlutter@redhat.com>
 
 	Mention people who sent patches
 
@@ -4909,6 +8981,8 @@
 	Check for failures during printing and return an indication whether printing
 	succeeded or not.
 
+2008-04-21  David Lutterkort  <dlutter@redhat.com>
+
 	Don't hide pointer in typedef; const correctness
 	The type for the Augeas handle is now called 'augeas' insteda of
 	'augeas_t', and is a struct, not a pointer to a struct.
@@ -4917,10 +8991,14 @@
 
 	Patch provided by Jim Meyering
 
+2008-04-21  David Lutterkort  <dlutter@redhat.com>
+
 	Change names of macros used to guard against double-inclusion
 	Change the names from __NAME_H to NAME_H_ since __* macros are reserved.
 
 	Suggested by Jim Meyering.
+
+2008-04-21  David Lutterkort  <dlutter@redhat.com>
 
 	Add "2008" to the copyright in the headers
 
@@ -4979,6 +9057,8 @@
 
 	Process grub.conf
 
+2008-04-14  David Lutterkort  <dlutter@redhat.com>
+
 	Don't delete too many siblings
 	When a path specified a node that had siblings with the same name, tree_rm
 	was deleting that node and all the siblings after it (because the name
@@ -4986,6 +9066,8 @@
 	deleted)
 
 	Now, first generate a list of nodes to delete before removing anything.
+
+2008-04-14  David Lutterkort  <dlutter@redhat.com>
 
 	Fix put test - it was checking for hte wrong result
 
@@ -4999,6 +9081,8 @@
 	multiple labels, and use '*' to match nodes with any label.
 
 	Syntax and semantics follow XPath.
+
+2008-04-11  David Lutterkort  <dlutter@redhat.com>
 
 	Run all tests - don't abort after the first failure
 
@@ -5017,6 +9101,8 @@
 	valid. Ideally, this check would be in the typechecker, but requires
 	dependant types, too much of a complication right now.
 
+2008-04-09  David Lutterkort  <dlutter@redhat.com>
+
 	Clean up some confusion around the semantics of store
 	Store does not create a tree; instead it puts a value in place where the
 	enclosing subtree will find it.
@@ -5025,6 +9111,8 @@
 	are set in at most one place in each subtree. Ideally, this check would
 	happen in the typechecker, but it would require that we parametrize the
 	lens type, considerably complicating matters.
+
+2008-04-09  David Lutterkort  <dlutter@redhat.com>
 
 	When get encounters an error during a test, include hte tree in the exn
 	lns_get now returns a tree even if the full input was not consumed. To
@@ -5044,12 +9132,16 @@
 	Do not do the expensive lens type checks if AUG_TYPE_CHECK is not set. Run
 	augtool with -c in tests to ensure tests do type checks.
 
+2008-04-09  David Lutterkort  <dlutter@redhat.com>
+
 	Update augtool round-trip tests and add them to 'make check'
 	Update the tests to the new layout of the tree.
 
 	augtest allows marking tests to skip (by putting 'skip=true' into the
 	test) and sets the exit status properly so that 'make check' will fail if
 	one of the augtool tests fails
+
+2008-04-09  David Lutterkort  <dlutter@redhat.com>
 
 	Fix underallocation
 
@@ -5208,6 +9300,8 @@
 
 	/etc/aliases processing in the new syntax with tests
 
+2008-04-04  David Lutterkort  <dlutter@redhat.com>
+
 	Allow rm from toplevel of tree
 	The only issue with this is that the dirty flag can not be set properly
 	when deleting from the toplevel of the tree since the flag has to be set on
@@ -5220,6 +9314,8 @@
 	Either way, this only happens during tests; in the 'real' tree, toplevel
 	nodes are fixed, like /files and /augeas, and we don't really have an issue
 	there.
+
+2008-04-04  David Lutterkort  <dlutter@redhat.com>
 
 	Small tweaks
 
@@ -5260,11 +9356,15 @@
 	The basename of the file must be the name of the module, lowercased and
 	with ".aug" appended
 
+2008-04-03  David Lutterkort  <dlutter@redhat.com>
+
 	Add explicit loadpath
 	augtool and augparse now take an explicit loadpath with the -I option,
 	which can be repeated multiple times.
 
 	aug_init takes a loadpath as a new argument
+
+2008-04-03  David Lutterkort  <dlutter@redhat.com>
 
 	Load needed modules
 	When the module for a qualified identifier Mod.name is not loaded yet,
@@ -5311,12 +9411,16 @@
 
 	Pass lns_error to parse; free dicts and skels
 
+2008-04-02  David Lutterkort  <dlutter@redhat.com>
+
 	Report errors from get as exceptions
 	Adds a value kind 'EXN'. When the interpreter gets such a value, it bails
 	out immediately.
 
 	lns_get now reports parse errors in an lns_error struct, which is turned
 	into an exception in the interpreter.
+
+2008-04-02  David Lutterkort  <dlutter@redhat.com>
 
 	Added tag ml-syntax-start for changeset fcd6c04a1eed
 
@@ -5450,6 +9554,8 @@
 	Store the map of (s1, s2) -> s for intersection in nested state sets
 	instead of a linked list.
 
+2008-03-12  David Lutterkort  <dlutter@redhat.com>
+
 	Faster data structures for sets of states and a list of sets of states
 	Store the list of sets of states for determinize in a hash table. Since I
 	don't feel like implementing my own, pull in glib and use GHashTable.
@@ -5466,6 +9572,8 @@
 	Performance improvement. Instead of allocating temporary lists for live and
 	reachable states, use one bit each in the state to mark them for that
 	purpose.
+
+2008-03-11  David Lutterkort  <dlutter@redhat.com>
 
 	Add typechecking of lenses
 	Concatenation and iteration of lenses is now checked for ambiguity. Union
@@ -5489,6 +9597,8 @@
 	to split that string into u.pv and up.v. Algorithm from Anders Moeller from
 	the dk.brics.grammar package.
 
+2008-03-06  David Lutterkort  <dlutter@redhat.com>
+
 	Fix example generation, it was completely broken
 	The previous algorithm was way too simplistic, and failed on more
 	complicated languages.
@@ -5496,6 +9606,8 @@
 	fa_example now generates a relatively short word, subject to certain
 	preferences, so that for example, alnum characters are preferred over
 	printable ones, and those over nonprintable ones.
+
+2008-03-06  David Lutterkort  <dlutter@redhat.com>
 
 	Fix some cornercases in fa_example
 
@@ -5511,6 +9623,8 @@
 
 	Released version 0.0.6
 
+2008-03-05  David Lutterkort  <dlutter@redhat.com>
+
 	Allow influencing the behavior of save
 	By passing one of the flags AUG_SAVE_BACKUP or AUG_SAVE_NEWFILE to
 	aug_init, it is possible to influence the behavior of aug_save to either
@@ -5519,6 +9633,8 @@
 
 	Also added switches to augtool to set this from the command line, and to
 	set the filesystem root.
+
+2008-03-05  David Lutterkort  <dlutter@redhat.com>
 
 	Added tag release-0.0.5 for changeset 0efe2a620e39
 
@@ -5538,12 +9654,16 @@
 
 	Add a test that performs Anders Moeller's ambiguity algorithm manually
 
+2008-03-04  David Lutterkort  <dlutter@redhat.com>
+
 	Two bug fixes
 	(1) fa_make_char_set would never create transitions with min == max
 	(2) fa_intersect got things wrong when t2 had an interval that overlapped
 	    several intervals on t1
 
 	Also added tests to check these two problems.
+
+2008-03-04  David Lutterkort  <dlutter@redhat.com>
 
 	Fix handling of negated charsets
 	Negated charsets where handled entirely wrong. A character set is now
@@ -5557,10 +9677,14 @@
 
 	Compute the complement, set difference and overlap of two languages
 
+2008-03-04  David Lutterkort  <dlutter@redhat.com>
+
 	Fix a bug in how '.' is being handled
 	The '.' was treated the same as [\n] instead of [^\n] by mistake.
 
 	Also fixes a small bug in fa_contains.
+
+2008-03-04  David Lutterkort  <dlutter@redhat.com>
 
 	Add deciding unambiguously iterable based on ua concatenable
 
@@ -5602,12 +9726,16 @@
 
 	Add tests for language subsets and equality
 
+2008-02-29  David Lutterkort  <dlutter@redhat.com>
+
 	The beginnings of a finite automata library
 	The code is heavily based on the Java package dk.brics.automaton by Anders
 	Moeller (http://www.brics.dk/automaton/)
 
 	Eventually, this should becomea standalone library, seeing how there does
 	not seem to be any open-source, maintained finite automata library.
+
+2008-02-29  David Lutterkort  <dlutter@redhat.com>
 
 	Some unit testing help
 	This is an adapted version of CuTest
@@ -5699,6 +9827,8 @@
 
 	Print test results a tad prettier
 
+2008-02-20  David Lutterkort  <dlutter@redhat.com>
+
 	Use GNU regex instead of PCRE
 	Use the GNU regex functions from glibc instead of PCRE, as glibc uses a DFA
 	implementation that does not suffer the limitations of PCRE's backtracking
@@ -5708,10 +9838,14 @@
 	essentially extended POSIX regular expressions, except that '.' does not
 	match newlines.
 
+2008-02-20  David Lutterkort  <dlutter@redhat.com>
+
 	Clean up regexps for POSIX
 	Various small fixes to regexps to make them work properly as POSIX regexps.
 
 	Added tag remove-any-first-follow for changeset 0d22160e9494
+
+2008-02-20  David Lutterkort  <dlutter@redhat.com>
 
 	Remove any matches ... and ..? from the language. Remove first/follow sets
 	They currently require lookahead assertions from the underlying regexp
@@ -5719,6 +9853,8 @@
 
 	Since any matches were the only reason to compute first/follow sets, remove
 	those, too.
+
+2008-02-20  David Lutterkort  <dlutter@redhat.com>
 
 	Remove the use of the any operators '...' and '..?'
 	These operators inherently require lookahead assertions, but we need to
@@ -5750,6 +9886,8 @@
 	Unfortunately, we have to keep first/follow computations to construct the
 	fairly tricky regexps that are used for ANY patterns.
 
+2008-02-18  David Lutterkort  <dlutter@redhat.com>
+
 	Remove unused token T_FIELD
 
 	Rename match.xaction to match.action
@@ -5759,6 +9897,8 @@
 	Add Match blocks
 
 	Remove leading whitespace inside Match directives
+
+2008-02-18  David Lutterkort  <dlutter@redhat.com>
 
 	Fix nested splits
 	For a lens like a . (b . c)*, tree_split used to return a split that looked
@@ -5770,11 +9910,15 @@
 	subsplits are mostly computed for their sideeffect, particularly for the
 	fact that they change state->tree.
 
+2008-02-18  David Lutterkort  <dlutter@redhat.com>
+
 	Properly print split nodes
 
 	Lenses for sshd_config
 	This is interesting because of the treatment of AcceptEnv and similar
 	constructs
+
+2008-02-18  David Lutterkort  <dlutter@redhat.com>
 
 	For split nodes, append entries at the last occurence
 	It is possible that one logical node is split across several physical
@@ -5850,12 +9994,16 @@
 
 	Fixed, nicely working tests
 
+2008-02-14  David Lutterkort  <dlutter@redhat.com>
+
 	Readline completion
 	Complete command names and tree paths.
 
 	Also cleans up the path entered by the user so that it doesn't have
 	trailing spaces or '/'. Cleaning should probably be done by the public
 	API.
+
+2008-02-14  David Lutterkort  <dlutter@redhat.com>
 
 	Major rework
 	Code still unbelievably buggy and segfaults in lots of places, but it is
@@ -5924,6 +10072,8 @@
 	user cleanly indicate what a comment goes with (e.g., an entire section,
 	the next key/value pair etc.)
 
+2008-01-29  David Lutterkort  <dlutter@redhat.com>
+
 	Initialize fields used as path components
 	When a field is used in a path component, initialize its value from the
 	path. Since it is not possible to change an existing path, this operation
@@ -5933,9 +10083,13 @@
 	where the leaf's value is used. That is not necessarily true; at least,
 	it's not being checked from the grammar.
 
+2008-01-29  David Lutterkort  <dlutter@redhat.com>
+
 	Test that reordering of subtrees works
 
 	Set the root of the tree from include
+
+2008-01-29  David Lutterkort  <dlutter@redhat.com>
 
 	Respect ordering of nodes in the config tree.
 	Previously, reordering of branches in the config tree did not lead to a
@@ -5947,7 +10101,11 @@
 	change the path for the current (iterator) node, only for the child nodes.
 	That is terribly ugly.
 
+2008-01-29  David Lutterkort  <dlutter@redhat.com>
+
 	Fix bug in creating sequence subtrees
+
+2008-01-29  David Lutterkort  <dlutter@redhat.com>
 
 	Distribute enters so we have one per match
 	Simultaneous traversal of the AST and the config tree is much simpler if
@@ -5966,6 +10124,8 @@
 	ensures that the children of an AST node differ in exactly one path
 	component.
 
+2008-01-29  David Lutterkort  <dlutter@redhat.com>
+
 	Push stores to the matches they store in the tree
 	In an assignment, the value being stored can only be a field
 	reference. Push the corresponding action for the store to that field. This
@@ -5981,7 +10141,11 @@
 	      if they get in the way of a store, but should probably be checked for
 	      the whole grammar
 
+2008-01-29  David Lutterkort  <dlutter@redhat.com>
+
 	Produce dot files for the grammar
+
+2008-01-29  David Lutterkort  <dlutter@redhat.com>
 
 	Various changes to the tests to make them (almost) work
 	(1) Adjust to the fact that the root dir is now a variable
@@ -5990,6 +10154,8 @@
 	    augtool will (rightly) report an impossible path
 
 	Some of the tests are still failing.
+
+2008-01-29  David Lutterkort  <dlutter@redhat.com>
 
 	aug_ls: Fix bad parent comparison
 	Before /foo/1000 was listed as a child of /foo/1
@@ -6013,6 +10179,8 @@
 	names and simplifies the 'put' direction of the transformation
 	considerably.
 
+2008-01-21  David Lutterkort  <dlutter@redhat.com>
+
 	Some config settings - most of them need to be exposed through configure.ac
 
 2008-01-18  David Lutterkort  <dlutter@redhat.com>
@@ -6028,6 +10196,8 @@
 
 	Don't segfault in ast_dot on NULL ast
 
+2008-01-18  David Lutterkort  <dlutter@redhat.com>
+
 	Only save files with actual changes
 	Split emitting into two parts: updating the AST from the config tree and
 	actually writing the AST to file. do_insertion and do_deletion now report
@@ -6036,6 +10206,8 @@
 
 	As a byproduct, parts of the AST that are no longer needed are actually
 	freed.
+
+2008-01-18  David Lutterkort  <dlutter@redhat.com>
 
 	Handle null values/tokens when storing
 
@@ -6054,6 +10226,8 @@
 	version have been lost. Therefore, builds between 57:9e439a136787 and this
 	revision will fail.
 
+2008-01-17  David Lutterkort  <dlutter@redhat.com>
+
 	Emit a the current tree into a file
 	Based on the AST, generate the file that lead to that AST. Changes to the
 	config tree are mirrored by corresponding changes in the AST before it is
@@ -6062,6 +10236,8 @@
 	This is a first version that works for some restricted set of grammars, but
 	needs a lot more testing.
 
+2008-01-17  David Lutterkort  <dlutter@redhat.com>
+
 	Compute tree handles for each match
 	The handle of a match is a set of regular expressions that indicate which
 	subtrees are generated by that match. Handles are computed based on the
@@ -6069,6 +10245,8 @@
 
 	The handle of an action is a regular expression matching the path generated
 	by that action.
+
+2008-01-17  David Lutterkort  <dlutter@redhat.com>
 
 	Build an explicit AST
 	Instead of representing the parsed file by a simple list of tokens, build a
@@ -6085,6 +10263,8 @@
 	Remove aug_token and any mention of it - that has been replaced by struct
 	ast.
 
+2008-01-17  David Lutterkort  <dlutter@redhat.com>
+
 	Represent quantifiers in their own match nodes
 	Instead of using a field in struct match for quantifiers '*', '+', '?',
 	represent quantified expressions by their own struct match, with a matches
@@ -6092,6 +10272,8 @@
 
 	This leads to a cleaner parser and makes constructing an explicit AST
 	simpler.
+
+2008-01-17  David Lutterkort  <dlutter@redhat.com>
 
 	Prefer comments over kv
 
@@ -6117,6 +10299,8 @@
 
 	Still missing is saving of the tree back to file, and in particular adding
 	new entries in the tree to such files.
+
+2008-01-03  David Lutterkort  <dlutter@redhat.com>
 
 	Move hosts and inittab under /etc
 
@@ -6189,6 +10373,8 @@
 	Produce tokens during parsing.
 	Also, nicer printing of the tokens read.
 
+2007-12-20  David Lutterkort  <dlutter@redhat.com>
+
 	Stricter checking for ambiguous rules
 	Check that all items in alternatives have non-overlapping first sets. Two
 	sets are overlapping if they both contain an entry pointing to the same
@@ -6198,6 +10384,8 @@
 	This still misses the case where literals have equivalent regular
 	expresions (e.g. /[ab]/ in one and /[ba]/ in the other) but that seems very
 	hard to determine.
+
+2007-12-20  David Lutterkort  <dlutter@redhat.com>
 
 	Print first/follow sets prettier, print control characters escaped with ~
 	Literals from first/follow sets are now reduced back to the abbrev they
@@ -6257,6 +10445,8 @@
 
 	aug_rec_save: Check input parameters
 
+2007-11-30  David Lutterkort  <dlutter@redhat.com>
+
 	Major overhaul of record parsing
 	Use PCRE to split records with regexps, and abstract a major chunk of
 	functionality out so it is independent of parsing pam config files
@@ -6264,6 +10454,8 @@
 	Translate changes in the tree into changes in files (change/insert/delete
 	of nodes are translated into changing fields and insert/delete of fields
 	and records/lines)
+
+2007-11-30  David Lutterkort  <dlutter@redhat.com>
 
 	Root filesys that tests pass against
 
@@ -6279,11 +10471,15 @@
 
 	Autotools support for building
 
+2007-11-26  David Lutterkort  <dlutter@redhat.com>
+
 	Very simplistic key store with a public API in augeas.h
 	The implementation is braindead and slow, but good enough to experiment
 	with the actual difficulty for augeas: parsing and editing different config
 	files
 
 	augtool gives a basic mean to inspect the keystore from the command line
+
+2007-11-26  David Lutterkort  <dlutter@redhat.com>
 
 	Ignore some files

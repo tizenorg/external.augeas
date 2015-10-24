@@ -1,19 +1,19 @@
 (*
 Module: NagiosObjects
-  Parses /etc/nagios3/objects/*.cfg
+  Parses /etc/{nagios{3,},icinga}/objects/*.cfg
 
 Authors: Sebastien Aperghis-Tramoni <sebastien@aperghis.net>
          Raphaël Pinson <raphink@gmail.com>
 
 About: License
-  This file is licenced under the LGPLv2+, like the rest of Augeas.
+  This file is licenced under the LGPL v2+, like the rest of Augeas.
 
 About: Lens Usage
   To be documented
 
 About: Configuration files
 
-  This lens applies to /etc/nagios3/objects/*.cfg. See <filter>.
+  This lens applies to /etc/{nagios{3,},icinga}/objects/*.cfg. See <filter>.
 *)
 
 module NagiosObjects =
@@ -25,11 +25,14 @@ module NagiosObjects =
 
     let keyword      = key /[A-Za-z0-9_]+/
 
+    (* optional, but preferred, whitespace *)
+    let opt_ws = del Rx.opt_space " "
+
     (* define an empty line *)
     let empty = Util.empty
 
     (* define a comment *)
-    let comment = Util.comment
+    let comment = Util.comment_generic /[ \t]*[#;][ \t]*/ "# "
 
     (* define a field *)
     let object_field    =
@@ -43,16 +46,17 @@ module NagiosObjects =
        let object_type = keyword in
           [ Util.indent
           . Util.del_str "define" . ws
-          . object_type . ws
+          . object_type . opt_ws
           . Util.del_str "{" . eol
           . ( empty | comment | object_field )*
-          . Util.del_str "}" . eol ]
+          . Util.indent . Util.del_str "}" . eol ]
 
     (* main structure *)
     let lns = ( empty | comment | object_def )*
 
     let filter = incl "/etc/nagios3/objects/*.cfg"
-               . Util.stdexcl
+               . incl "/etc/nagios/objects/*.cfg"
+	       . incl "/etc/icinga/objects/*.cfg"
 
     let xfm = transform lns filter
 

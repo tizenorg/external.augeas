@@ -22,14 +22,14 @@ let eol      = IniFile.eol
 let empty    = IniFile.empty
 let sto_to_comment
              = Util.del_opt_ws " "
-             . store /[^;# \t\n][^;#\n]*[^;# \t\n]|[^;# \t\n]/
+             . store /[^;# \t\r\n][^;#\r\n]*[^;# \t\r\n]|[^;# \t\r\n]/
 
 (************************************************************************
  *                        ENTRY
  * smb.conf allows indented entries
  *************************************************************************)
 
-let entry_re = /[A-Za-z0-9_.-][A-Za-z0-9 _.:-]*[A-Za-z0-9_.-]/
+let entry_re = /[A-Za-z0-9_.-][A-Za-z0-9 _.:\*-]*[A-Za-z0-9_.\*-]/
 let entry    = let kw = entry_re in
              [ indent
              . key kw
@@ -52,6 +52,5 @@ let record   = IniFile.record title entry
 let lns      = IniFile.lns record comment
 
 let filter   = (incl "/etc/samba/smb.conf")
-             . Util.stdexcl
 
 let xfm = transform lns filter

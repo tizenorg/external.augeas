@@ -8,7 +8,7 @@ About: Reference
   This lens tries to keep as close as possible to `man 5 shells` where possible.
 
 About: License
-   This file is licenced under the LGPLv2+, like the rest of Augeas.
+   This file is licenced under the LGPL v2+, like the rest of Augeas.
 
 About: Lens Usage
    To be documented
@@ -23,7 +23,8 @@ module Shells =
 
 let empty = Util.empty
 let comment = Util.comment
-let shell = [ seq "shell" . store /[^# \t\n]+/ . Util.eol ]
+let comment_or_eol = Util.comment_or_eol
+let shell = [ seq "shell" . store /[^# \t\n]+/ . comment_or_eol ]
 
 (* View: lns
      The shells lens
@@ -32,6 +33,5 @@ let lns = ( empty | comment | shell )*
 
 (* Variable: filter *)
 let filter = incl "/etc/shells"
-    . Util.stdexcl
 
 let xfm = transform lns filter

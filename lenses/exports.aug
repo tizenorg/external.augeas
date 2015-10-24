@@ -76,7 +76,7 @@ About: Limitations
 module Exports =
   autoload xfm
 
-  let client_re = /[a-zA-Z0-9\.@\*\?\/\-]+/
+  let client_re = /[a-zA-Z0-9.@*?\/:-]+/
 
   let eol = Util.eol
   let lbracket  = Util.del_str "("
@@ -84,7 +84,7 @@ module Exports =
   let sep_com   = Sep.comma
   let sep_spc   = Sep.space
 
-  let option = [ label "option" . store /[^,)]+/ ]
+  let option = [ label "option" . store /[^,)]*/ ]
 
   let client    = [ label "client" . store client_re .
                     ( Build.brackets lbracket rbracket

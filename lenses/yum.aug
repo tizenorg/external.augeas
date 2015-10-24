@@ -2,55 +2,55 @@
 module Yum =
   autoload xfm
 
-  let eol = Util.del_str "\n"
+(************************************************************************
+ * INI File settings
+ *************************************************************************)
 
-  let key_re = /[^#;:= \t\n[\/]+/ - /baseurl|gpgkey/
+let comment  = IniFile.comment "#" "#"
+let sep      = IniFile.sep "=" "="
+let empty    = Util.empty
+let eol      = IniFile.eol
 
-  let eq = del /[ \t]*[:=][ \t]*/ "="
-  let secname = /[^]\/]+/
+(************************************************************************
+ *                        ENTRY
+ *************************************************************************)
 
-  let value = /[^ \t\n][^\n]*/
+let list_entry (list_key:string)  =
+  let list_value = store /[^# \t\r\n,][^ \t\r\n,]*[^# \t\r\n,]|[^# \t\r\n,]/ in
+  let list_sep = del /([ \t]*(,[ \t]*|\r?\n[ \t]+))|[ \t]+/ "\n\t" in
+  [ key list_key . sep . Sep.opt_space . list_value ]
+  . (list_sep . Build.opt_list [ label list_key . list_value ] list_sep)?
+  . eol
 
-  (* We really need to allow comments starting with REM and rem but that     *)
-  (* leads to ambiguities with keys 'rem=' and 'REM=' The regular expression *)
-  (* to do that cleanly is somewhat annoying to craft by hand; we'd need to  *)
-  (* define KEY_RE as /[A-Za-z0-9]+/ - "REM" - "rem"                         *)
-  let comment = [ del /([;#].*)?[ \t]*\n/ "\n" ]
+let entry_re = IniFile.entry_re - ("baseurl" | "gpgkey" | "exclude")
 
-  let list_sep = del /([ \t]*(,[ \t]*|\n[ \t]+))|[ \t]+/ "\n\t"
-  let list_value = store /[^ \t\n,]+/
+let entry       = IniFile.entry entry_re sep comment
+                | empty
 
-  let kv_list(s:string) =
-    [ key s . eq . list_value ] .
-      [ list_sep . label s . list_value ]* . eol
+let entries =
+     let list_entry_elem (k:string) = list_entry k . entry*
+  in entry*
+   | entry* . Build.combine_three_opt
+                (list_entry_elem "baseurl")
+                (list_entry_elem "gpgkey")
+                (list_entry_elem "exclude")
 
-  let kv = [ key key_re . eq . store value . eol ]
 
-  let sechead = Util.del_str "[" . key secname . Util.del_str "]"
-      . del /[ \t]*[;#]?.*/ ""
-      . eol
+(***********************************************************************a
+ *                         TITLE
+ *************************************************************************)
+let title       = IniFile.title IniFile.record_re
+let record      = [ title . entries ]
 
-  let entry = comment | kv
 
-  (* A section is a section head, followed by any number of key value    *)
-  (* entries, with comments and blank lines freely interspersed. The     *)
-  (* continuation lines allowed for baseurl entries make this a little   *)
-  (* more interesting: there can be at most one baseurl entry in each    *)
-  (* section (more precisely, yum will only obey one of them, but we act *)
-  (* as if yum would actually barf)                                      *)
-  let section =
-    let list_baseurl = kv_list "baseurl" in
-      let list_gpgkey = kv_list "gpgkey" in
-    [ sechead . (  entry*
-                 | entry* . list_baseurl . entry*
-                 | entry* . list_gpgkey . entry*
-                 | entry* . list_baseurl . entry* . list_gpgkey . entry*
-                 | entry* . list_gpgkey . entry* . list_baseurl . entry*)]
-
-  let lns = (comment) * . (section) *
+(************************************************************************
+ *                         LENS & FILTER
+ *************************************************************************)
+let lns    = (empty | comment)* . record*
 
   let filter = (incl "/etc/yum.conf")
-      . (incl "/etc/yum.repos.d/*")
+      . (incl "/etc/yum.repos.d/*.repo")
+      . (incl "/etc/yum/yum-cron*.conf") 
       . (incl "/etc/yum/pluginconf.d/*")
       . (excl "/etc/yum/pluginconf.d/versionlock.list")
       . Util.stdexcl

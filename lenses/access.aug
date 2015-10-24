@@ -8,7 +8,7 @@ About: Reference
   Some examples of valid entries can be found in access.conf or "man access.conf"
 
 About: License
-  This file is licensed under the LGPLv2+, like the rest of Augeas.
+  This file is licensed under the LGPL v2+, like the rest of Augeas.
 
 About: Lens Usage
   Sample usage of this lens in augtool
@@ -20,6 +20,9 @@ About: Lens Usage
 
 About: Configuration files
   This lens applies to /etc/security/access.conf. See <filter>.
+
+About: Examples
+   The <Test_Access> file contains various examples and tests.
 *)
 module Access =
   autoload xfm
@@ -27,13 +30,14 @@ module Access =
 (* Group: Comments and empty lines *)
 (* Variable: comment *)
 let comment   = Util.comment
-(* Variable: empty line *)
+(* Variable: empty *)
 let empty     = Util.empty
+
 (* Group: Useful primitives *)
 (* Variable: colon
  *  this is the standard field separator " : "
  *)
-let colon     = Sep.space . Sep.colon . Sep.space
+let colon     = del (Rx.opt_space . ":" . Rx.opt_space) " : "
 
 
 (************************************************************************
@@ -44,15 +48,28 @@ let colon     = Sep.space . Sep.colon . Sep.space
  *)
 let access    = label "access" . store /[+-]/
 
+(* Variable: identifier_re
+   Regex for user/group identifiers *)
+let identifier_re = /[A-Za-z0-9_.\\-]+/
+
 (* View: user_re
  * Regex for user/netgroup fields
  *)
-let user_re = Rx.word - /[Ee][Xx][Cc][Ee][Pp][Tt]/
+let user_re = identifier_re - /[Ee][Xx][Cc][Ee][Pp][Tt]/
 
 (* View: user
- * user can be a username or a group
+ * user can be a username, username@hostname or a group
  *)
-let user      = [ label "user" . store user_re ]
+let user      = [ label "user"
+                . ( store user_re
+                  | store Rx.word . Util.del_str "@"
+                    . [ label "host" . store Rx.word ] ) ]
+
+(* View: group
+ * Format is (GROUP)
+ *)
+let group     = [ label "group"
+                  . Util.del_str "(" . store identifier_re . Util.del_str ")" ]
 
 (* View: netgroup
  * Format is @NETGROUP[@@NISDOMAIN]
@@ -64,7 +81,7 @@ let netgroup =
 (* View: user_list
  * A list of users or netgroups to apply the rule to
  *)
-let user_list = Build.opt_list (user|netgroup) Sep.space
+let user_list = Build.opt_list (user|group|netgroup) Sep.space
 
 (* View: origin_list
  * origin_list can be a single ipaddr/originname/domain/fqdn or a list of those values
@@ -107,4 +124,5 @@ let lns       = (comment|empty|entry) *
 (* Variable: filter *)
 let filter    = incl "/etc/security/access.conf"
 
+(* xfm *)
 let xfm       = transform lns filter

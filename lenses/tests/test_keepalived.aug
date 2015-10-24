@@ -1,7 +1,12 @@
-(* Test for keepalived lens *)
+(*
+Module: Test_Keepalived
+  Provides unit tests and examples for the <Keepalived> lens.
+*)
 
-module Test_keepalived =
+module Test_Keepalived =
 
+(* Variable: conf
+   A full configuration file *)
    let conf = "! This is a comment 
 ! Configuration File for keepalived 
 
@@ -33,8 +38,31 @@ vrrp_sync_group VG1 {
 vrrp_instance VI_1 { 
         state MASTER 
         interface eth0 
+
+	track_interface {
+		eth0 # Back
+		eth1 # DMZ
+	}
+	track_script {
+		check_apache2    # weight = +2 si ok, 0 si nok
+	}
+	garp_master_delay 5
+	priority 50
+	advert_int 2
+	authentication {
+		auth_type PASS
+		auth_pass mypass
+	}
+	virtual_ipaddress {
+		10.234.66.146/32 dev eth0
+	}
      
         lvs_sync_daemon_interface eth0 
+	ha_suspend
+
+       notify_master   \"/svr/scripts/notify_master.sh\"
+       notify_backup   \"/svr/scripts/notify_backup.sh\"
+       notify_fault    \"/svr/scripts/notify_fault.sh\"
 
     ! each virtual router id must be unique per instance name! 
         virtual_router_id 51 
@@ -90,6 +118,8 @@ virtual_server 192.168.1.11 22 {
 
     protocol TCP 
 
+    sorry_server 10.20.40.30 22
+
     ! there can be as many real_server blocks as you need 
 
     real_server 10.20.40.10 22 { 
@@ -118,10 +148,18 @@ virtual_server_group DNS_1 {
     10.45.58.59/32 27
 }
 
+vrrp_script chk_apache2 {       # Requires keepalived-1.1.13
+script \"killall -0 apache2\"   # faster
+interval 2                      # check every 2 seconds
+weight 2                        # add 2 points of prio if OK
+}
+
 ! that's all
 "
 
 
+(* Test: Keepalived.lns
+   Test the full <conf> *)
    test Keepalived.lns get conf =
      { "#comment" = "This is a comment" }
      { "#comment" = "Configuration File for keepalived" }
@@ -154,7 +192,28 @@ virtual_server_group DNS_1 {
        { "state" = "MASTER" }
        { "interface" = "eth0" }
        { }
+       { "track_interface"
+         { "eth0" { "#comment" = "Back" } }
+         { "eth1" { "#comment" = "DMZ" } } }
+       { "track_script"
+         { "check_apache2" { "#comment" = "weight = +2 si ok, 0 si nok" } } }
+       { "garp_master_delay" = "5" }
+       { "priority" = "50" }
+       { "advert_int" = "2" }
+       { "authentication"
+         { "auth_type" = "PASS" }
+         { "auth_pass" = "mypass" } }
+       { "virtual_ipaddress"
+         { "ipaddr" = "10.234.66.146"
+           { "prefixlen" = "32" }
+           { "dev" = "eth0" } } }
+       { }
        { "lvs_sync_daemon_interface" = "eth0" }
+       { "ha_suspend" }
+       { }
+       { "notify_master" = "\"/svr/scripts/notify_master.sh\"" }
+       { "notify_backup" = "\"/svr/scripts/notify_backup.sh\"" }
+       { "notify_fault" = "\"/svr/scripts/notify_fault.sh\"" }
        { }
        { "#comment" = "each virtual router id must be unique per instance name!" }
        { "virtual_router_id" = "51" }
@@ -173,7 +232,6 @@ virtual_server_group DNS_1 {
        { }
        { "#comment" = "send an alert when this instance changes state from MASTER to BACKUP" }
        { "smtp_alert" }
-       { }
        { }
        { "#comment" = "this authentication is for syncing between failover servers" }
        { "#comment" = "keepalived supports PASS, which is simple password" }
@@ -213,12 +271,15 @@ virtual_server_group DNS_1 {
          { }
          { "protocol" = "TCP" }
          { }
+         { "sorry_server"
+           { "ip" = "10.20.40.30" }
+           { "port" = "22" } }
+         { }
          { "#comment" = "there can be as many real_server blocks as you need" }
          { }
          { "real_server"
            { "ip" = "10.20.40.10" }
            { "port" = "22" }
-           { }
            { "#comment" = "if we used weighted round-robin or a similar lb algo," }
            { "#comment" = "we include the weight of this server" }
            { }
@@ -246,5 +307,136 @@ virtual_server_group DNS_1 {
 	     { "prefixlen" = "32" } }
 	   { "port" = "27" } } }
        { }
+       { "vrrp_script" = "chk_apache2"
+         { "#comment" = "Requires keepalived-1.1.13" }
+         { "script" = "\"killall -0 apache2\""
+           { "#comment" = "faster" } }
+         { "interval" = "2"
+           { "#comment" = "check every 2 seconds" } }
+         { "weight" = "2"
+           { "#comment" = "add 2 points of prio if OK" } } }
+       { }
        { "#comment" = "that's all" }
 
+(* Variable: tcp_check
+   An example of a TCP health checker *)
+let tcp_check = "virtual_server 192.168.1.11 22 {
+    real_server 10.20.40.10 22 {
+        TCP_CHECK {
+            connect_timeout 3
+            connect_port 22
+            bindto 192.168.1.1
+        }
+    }
+}
+"
+test Keepalived.lns get tcp_check =
+  { "virtual_server"
+    { "ip" = "192.168.1.11" }
+    { "port" = "22" }
+    { "real_server"
+      { "ip" = "10.20.40.10" }
+      { "port" = "22" }
+      { "TCP_CHECK"
+        { "connect_timeout" = "3" }
+        { "connect_port" = "22" }
+        { "bindto" = "192.168.1.1" } } } }
+
+(* Variable: misc_check
+   An example of a MISC health checker *)
+let misc_check = "virtual_server 192.168.1.11 22 {
+    real_server 10.20.40.10 22 {
+        MISC_CHECK {
+            misc_path /usr/local/bin/server_test
+            misc_timeout 3
+            misc_dynamic
+        }
+    }
+}
+"
+test Keepalived.lns get misc_check =
+  { "virtual_server"
+    { "ip" = "192.168.1.11" }
+    { "port" = "22" }
+    { "real_server"
+      { "ip" = "10.20.40.10" }
+      { "port" = "22" }
+      { "MISC_CHECK"
+        { "misc_path" = "/usr/local/bin/server_test" }
+        { "misc_timeout" = "3" }
+        { "misc_dynamic" } } } }
+
+(* Variable: smtp_check
+   An example of an SMTP health checker *)
+let smtp_check = "virtual_server 192.168.1.11 22 {
+    real_server 10.20.40.10 22 {
+        SMTP_CHECK {
+            host {
+              connect_ip 10.20.40.11
+              connect_port 587
+              bindto 192.168.1.1
+            }
+            connect_timeout 3
+            retry 5
+            delay_before_retry 10
+            helo_name \"Testing Augeas\"
+        }
+    }
+}
+"
+test Keepalived.lns get smtp_check =
+  { "virtual_server"
+    { "ip" = "192.168.1.11" }
+    { "port" = "22" }
+    { "real_server"
+      { "ip" = "10.20.40.10" }
+      { "port" = "22" }
+      { "SMTP_CHECK"
+        { "host"
+          { "connect_ip" = "10.20.40.11" }
+          { "connect_port" = "587" }
+          { "bindto" = "192.168.1.1" } }
+        { "connect_timeout" = "3" }
+        { "retry" = "5" }
+        { "delay_before_retry" = "10" }
+        { "helo_name" = "\"Testing Augeas\"" } } } }
+
+(* Variable: http_check
+   An example of an HTTP health checker *)
+let http_check = "virtual_server 192.168.1.11 22 {
+    real_server 10.20.40.10 22 {
+        HTTP_GET {
+            url {
+              path /mrtg2/
+              digest 9b3a0c85a887a256d6939da88aabd8cd
+              status_code 200
+            }
+            connect_timeout 3
+            connect_port 8080
+            nb_get_retry 5
+            delay_before_retry 10
+        }
+        SSL_GET {
+            connect_port 8443
+        }
+    }
+}
+"
+test Keepalived.lns get http_check =
+  { "virtual_server"
+    { "ip" = "192.168.1.11" }
+    { "port" = "22" }
+    { "real_server"
+      { "ip" = "10.20.40.10" }
+      { "port" = "22" }
+      { "HTTP_GET"
+        { "url"
+          { "path" = "/mrtg2/" }
+          { "digest" = "9b3a0c85a887a256d6939da88aabd8cd" }
+          { "status_code" = "200" } }
+        { "connect_timeout" = "3" }
+        { "connect_port" = "8080" }
+        { "nb_get_retry" = "5" }
+        { "delay_before_retry" = "10" } }
+      { "SSL_GET"
+        { "connect_port" = "8443" } } } }

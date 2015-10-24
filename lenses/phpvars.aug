@@ -14,12 +14,13 @@ module Phpvars =
  *************************************************************************)
 
 let eol        = Util.eol
-let indent     = Util.indent
-let empty      = Util.empty
+let empty      = Util.empty_c_style
 
-let sep_php    = del /<\?php[ \t]*\n/ "<?php\n"
-let sep_eq     = del /[ \n]*=/ " ="
-let sep_spc    = del /[ \n]+/ " "
+let open_php   = del /<\?(php)?[ \t]*\n/i "<?php\n"
+let close_php  = del /([ \t]*(php)?\?>\n[ \t\n]*)?/i "php?>\n"
+let sep_eq     = del /[ \t\n]*=[ \t\n]*/ " = "
+let sep_opt_spc = Sep.opt_space
+let sep_spc    = Sep.space
 let sep_dollar = del /\$/ "$"
 let sep_scl    = del /[ \t]*;/ ";"
 
@@ -27,92 +28,92 @@ let chr_blank = /[ \t]/
 let chr_nblank = /[^ \t\n]/
 let chr_any    = /./
 let chr_star   = /\*/
-let chr_nstar  = /[^\* \t\n]/
+let chr_nstar  = /[^* \t\n]/
 let chr_slash  = /\//
 let chr_nslash = /[^\/ \t\n]/
+let chr_variable = /\$[A-Za-z0-9'"_:-]+/
 
-let sto_to_scl = store /([^ \t\n].*[^ \t\n;]|[^ \t\n;])/
+let sto_to_scl = store (/([^ \t\n].*[^ \t\n;]|[^ \t\n;])/ - /.*;[ \t]*(\/\/|#).*/) (* " *)
 let sto_to_eol = store /([^ \t\n].*[^ \t\n]|[^ \t\n])/
 
 (************************************************************************
  *                              COMMENTS
  *************************************************************************)
 
-let comment_re = chr_nblank
-               | ( chr_nblank . chr_any*
-                   . ( chr_star  . chr_nslash
-                     | chr_nstar . chr_slash
-                     | chr_nstar . chr_nslash
-                     | chr_blank . chr_nblank ) )
+(* Both c-style and shell-style comments are valid
+   Default to c-style *)
+let comment_one_line = Util.comment_generic /[ \t]*(\/\/|#)[ \t]*/ "// "
 
-let comment_first_line
-               = [ indent
-                 . seq "#comment"
-                 . store comment_re
-                  ]
-let comment_other_line
-               = [ del /[ \t]*\n[ \t\n]*/ "\n"
-                 . seq "#comment"
-                 . store comment_re
-                  ]
-let comment_end
-               = del /[ \t\n]*/ "" . del (chr_star . chr_slash) "*/"
+let comment_eol = Util.comment_generic /[ \t]*(\/\/|#)[ \t]*/ " // "
 
-let comment_extended
-                 = [ indent
-                 . del (chr_slash . chr_star) "/*"
-                 . label "#comment"
-                 . counter "#comment"
-                 . ( (comment_first_line . comment_other_line+)
-                   | comment_first_line?)
-                 . comment_end
-                 . eol ]
+let comment      = Util.comment_multiline | comment_one_line
 
-let comment_inline
-                 = [ indent
-                 . del (chr_slash . chr_slash) "//"
-                 . label "#inline"
-                 . indent
-                 . sto_to_eol
-                 . eol ]
+let eol_or_comment = eol | comment_eol
 
-let comment      = comment_extended | comment_inline
 
 (************************************************************************
  *                               ENTRIES
  *************************************************************************)
 
-let global     = [ key "global"
-                 . sep_spc
-                 . sep_dollar
-                 . sto_to_scl
+let simple_line (kw:regexp) (lns:lens) = [ key kw
+                 . lns
                  . sep_scl
-                 . eol ]
+                 . eol_or_comment ]
 
-let variable_re
-               = /\$[][A-Za-z0-9'_-]+/
-let variable   = [ key variable_re
-                 . sep_eq
-                 . sep_spc
-                 . sto_to_scl
-                 . sep_scl
-                 . eol ]
+let global     = simple_line "global" (sep_opt_spc . sep_dollar . sto_to_scl)
 
-let include    = [ key "@include"
-                 . sep_spc
-                 . sto_to_scl
-                 . sep_scl
-               .   eol ]
+let assignment =
+  let arraykey = [ label "@arraykey" . store /\[[][A-Za-z0-9'"_:-]+\]/ ] in (* " *)
+  simple_line chr_variable (arraykey? . (sep_eq . sto_to_scl))
 
-let entry      = global|variable|include
+let variable = Util.indent . assignment
+
+let classvariable =
+  Util.indent . del /(public|var)/ "public" . Util.del_ws_spc . assignment
+
+let include = simple_line "@include" (sep_opt_spc . sto_to_scl)
+
+let generic_function (kw:regexp) (lns:lens) =
+  let lbracket = del /[ \t]*\([ \t]*/ "(" in
+  let rbracket = del /[ \t]*\)/ ")" in
+    simple_line kw (lbracket . lns . rbracket)
+
+let define     =
+  let variable_re = /[A-Za-z0-9'_:-]+/ in
+  let quote = del /["']/ "'" in
+  let sep_comma = del /["'][ \t]*,[ \t]*/ "', " in
+  let sto_to_rbracket = store (/[^ \t\n][^\n]*[^ \t\n\)]|[^ \t\n\)]/
+                             - /.*;[ \t]*(\/\/|#).*/) in
+    generic_function "define" (quote . store variable_re . sep_comma
+                                     . [ label "value" . sto_to_rbracket ])
+
+let simple_function (kw:regexp) =
+  let sto_to_rbracket = store (/[^ \t\n][^\n]*[^ \t\n\)]|[^ \t\n\)]/
+                             - /.*;[ \t]*(\/\/|#).*/) in
+    generic_function kw sto_to_rbracket
+
+let entry      = Util.indent
+               . ( global
+                 | include
+                 | define
+                 | simple_function "include"
+                 | simple_function "include_once"
+                 | simple_function "echo" )
+
+
+let class =
+  let classname = key /[A-Za-z0-9'"_:-]+/ in (* " *)
+  del /class[ \t]+/ "class " .
+  [ classname . Util.del_ws_spc . del "{" "{" .
+    (empty|comment|entry|classvariable)*
+  ] . del "}" "}"
 
 (************************************************************************
  *                                LENS
  *************************************************************************)
 
-let lns        = sep_php . (empty|comment|entry)*
+let lns        = open_php . (empty|comment|entry|class|variable)* . close_php
 
 let filter     = incl "/etc/squirrelmail/config.php"
-               . Util.stdexcl
 
 let xfm        = transform lns filter

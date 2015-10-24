@@ -1,7 +1,7 @@
 /*
  * syntax.h: Data types to represent language syntax
  *
- * Copyright (C) 2007-2010 David Lutterkort
+ * Copyright (C) 2007-2011 David Lutterkort
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -172,9 +172,6 @@ struct value {
     };
 };
 
-/* Return an exception value with error == 1 (and seen == 1) */
-struct value *exn_error(void);
-
 /* All types except for T_ARROW (functions) are simple. Subtype relations
  * for the simple types:
  *   T_STRING <: T_REGEXP
@@ -231,6 +228,9 @@ struct value *make_unit(struct info *info);
 struct term *make_app_term(struct term *func, struct term *arg,
                            struct info *info);
 struct term *make_app_ident(char *id, struct term *func, struct info *info);
+
+/* Print a tree in the braces style used in modules */
+void print_tree_braces(FILE *out, int indent, struct tree *tree);
 
 /* Make an EXN value
  * Receive ownership of INFO

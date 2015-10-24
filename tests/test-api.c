@@ -1,7 +1,7 @@
 /*
  * test-api.c: test public API functions for conformance
  *
- * Copyright (C) 2009 Red Hat Inc.
+ * Copyright (C) 2009-2011 Red Hat Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -29,6 +29,8 @@
 
 #include <unistd.h>
 
+#include <libxml/tree.h>
+
 static const char *abs_top_srcdir;
 static char *root;
 static char *loadpath;
@@ -42,6 +44,7 @@ static char *loadpath;
 static void testGet(CuTest *tc) {
     int r;
     const char *value;
+    const char *label;
     struct augeas *aug;
 
     aug = aug_init(root, loadpath, AUG_NO_STDINC|AUG_NO_LOAD);
@@ -70,6 +73,86 @@ static void testGet(CuTest *tc) {
     CuAssertIntEquals(tc, -1, r);
     CuAssertPtrEquals(tc, NULL, value);
     CuAssertIntEquals(tc, AUG_EMMATCH, aug_error(aug));
+
+    /* aug_label returns 1 and the label if exactly one node matches */
+    r = aug_label(aug, "/augeas/version/save/*[1]", &label);
+    CuAssertIntEquals(tc, 1, r);
+    CuAssertPtrNotNull(tc, label);
+    CuAssertIntEquals(tc, AUG_NOERROR, aug_error(aug));
+
+    /* aug_label returns 0 and no label when no node matches */
+    r = aug_label(aug, "/augeas/version/save/*[ last() + 1 ]", &label);
+    CuAssertIntEquals(tc, 0, r);
+    CuAssertPtrEquals(tc, NULL, label);
+    CuAssertIntEquals(tc, AUG_NOERROR, aug_error(aug));
+
+    /* aug_label should return an error when multiple nodes match */
+    r = aug_label(aug, "/augeas/version/save/*", &label);
+    CuAssertIntEquals(tc, -1, r);
+    CuAssertPtrEquals(tc, NULL, label);
+    CuAssertIntEquals(tc, AUG_EMMATCH, aug_error(aug));
+
+    /* augeas should prepend context if relative path given */
+    r = aug_set(aug, "/augeas/context", "/augeas/version");
+    r = aug_get(aug, "save/*[1]", &value);
+    CuAssertIntEquals(tc, 1, r);
+    CuAssertPtrNotNull(tc, value);
+    CuAssertIntEquals(tc, AUG_NOERROR, aug_error(aug));
+
+    /* augeas should still work with an empty context */
+    r = aug_set(aug, "/augeas/context", "");
+    r = aug_get(aug, "/augeas/version", &value);
+    CuAssertIntEquals(tc, 1, r);
+    CuAssertPtrNotNull(tc, value);
+    CuAssertIntEquals(tc, AUG_NOERROR, aug_error(aug));
+
+    /* augeas should ignore trailing slashes in context */
+    r = aug_set(aug, "/augeas/context", "/augeas/version/");
+    r = aug_get(aug, "save/*[1]", &value);
+    CuAssertIntEquals(tc, 1, r);
+    CuAssertPtrNotNull(tc, value);
+    CuAssertIntEquals(tc, AUG_NOERROR, aug_error(aug));
+
+    /* augeas should create non-existent context path */
+    r = aug_set(aug, "/augeas/context", "/context/foo");
+    r = aug_set(aug, "bar", "value");
+    r = aug_get(aug, "/context/foo/bar", &value);
+    CuAssertIntEquals(tc, 1, r);
+    CuAssertPtrNotNull(tc, value);
+    CuAssertIntEquals(tc, AUG_NOERROR, aug_error(aug));
+
+    aug_close(aug);
+}
+
+static void testSet(CuTest *tc) {
+    int r;
+    const char *value;
+    struct augeas *aug;
+
+    aug = aug_init(root, loadpath, AUG_NO_STDINC|AUG_NO_LOAD);
+    CuAssertPtrNotNull(tc, aug);
+    CuAssertIntEquals(tc, AUG_NOERROR, aug_error(aug));
+
+    /* aug_set returns 0 for a simple set */
+    r = aug_set(aug, "/augeas/testSet", "foo");
+    CuAssertIntEquals(tc, 0, r);
+    CuAssertIntEquals(tc, AUG_NOERROR, aug_error(aug));
+
+    /* aug_set returns -1 when cannot set due to multiple nodes */
+    r = aug_set(aug, "/augeas/version/save/*", "foo");
+    CuAssertIntEquals(tc, -1, r);
+    CuAssertIntEquals(tc, AUG_EMMATCH, aug_error(aug));
+
+    /* aug_set is able to set the context, even when currently invalid */
+    r = aug_set(aug, "/augeas/context", "( /files | /augeas )");
+    CuAssertIntEquals(tc, 0, r);
+    CuAssertIntEquals(tc, AUG_NOERROR, aug_error(aug));
+    r = aug_get(aug, "/augeas/version", &value);
+    CuAssertIntEquals(tc, -1, r);
+    CuAssertIntEquals(tc, AUG_EMMATCH, aug_error(aug));
+    r = aug_set(aug, "/augeas/context", "/files");
+    CuAssertIntEquals(tc, 0, r);
+    CuAssertIntEquals(tc, AUG_NOERROR, aug_error(aug));
 
     aug_close(aug);
 }
@@ -334,17 +417,232 @@ static void testNodeInfo(CuTest *tc) {
     aug_close(aug);
 }
 
+static void testMv(CuTest *tc) {
+    struct augeas *aug;
+    int r;
+
+    aug = aug_init(root, loadpath, AUG_NO_STDINC|AUG_NO_LOAD);
+    CuAssertPtrNotNull(tc, aug);
+
+    r = aug_set(aug, "/a/b/c", "value");
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_mv(aug, "/a/b/c", "/a/b/c/d");
+    CuAssertIntEquals(tc, -1, r);
+    CuAssertIntEquals(tc, AUG_EMVDESC, aug_error(aug));
+
+    aug_close(aug);
+}
+
+static void testCp(CuTest *tc) {
+    struct augeas *aug;
+    int r;
+    const char *value;
+
+    aug = aug_init(root, loadpath, AUG_NO_STDINC|AUG_NO_LOAD);
+    CuAssertPtrNotNull(tc, aug);
+    r = aug_load(aug);
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_set(aug, "/a/b/c", "value");
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_cp(aug, "/a/b/c", "/a/b/c/d");
+    CuAssertIntEquals(tc, -1, r);
+    CuAssertIntEquals(tc, AUG_ECPDESC, aug_error(aug));
+
+    // Copy recursive tree with empty label
+    r = aug_cp(aug, "/files/etc/logrotate.d/rpm/rule/create", "/files/etc/logrotate.d/acpid/rule/create");
+    CuAssertRetSuccess(tc, r);
+
+    // Check empty label
+    r = aug_get(aug, "/files/etc/logrotate.d/rpm/rule/create", &value);
+    CuAssertIntEquals(tc, 1, r);
+    CuAssertStrEquals(tc, NULL, value);
+
+    // Check that copies are well separated
+    r = aug_set(aug, "/files/etc/logrotate.d/rpm/rule/create/mode", "1234");
+    CuAssertRetSuccess(tc, r);
+    r = aug_set(aug, "/files/etc/logrotate.d/acpid/rule/create/mode", "5678");
+    CuAssertRetSuccess(tc, r);
+    r = aug_get(aug, "/files/etc/logrotate.d/rpm/rule/create/mode", &value);
+    CuAssertIntEquals(tc, 1, r);
+    CuAssertStrEquals(tc, "1234", value);
+    r = aug_get(aug, "/files/etc/logrotate.d/acpid/rule/create/mode", &value);
+    CuAssertIntEquals(tc, 1, r);
+    CuAssertStrEquals(tc, "5678", value);
+
+    aug_close(aug);
+}
+
+
+static void testRename(CuTest *tc) {
+    struct augeas *aug;
+    int r;
+
+    aug = aug_init(root, loadpath, AUG_NO_STDINC|AUG_NO_LOAD);
+    CuAssertPtrNotNull(tc, aug);
+
+    r = aug_set(aug, "/a/b/c", "value");
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_rename(aug, "/a/b/c", "d");
+    CuAssertIntEquals(tc, 1, r);
+
+    r = aug_set(aug, "/a/e/d", "value2");
+    CuAssertRetSuccess(tc, r);
+
+    // Multiple rename
+    r = aug_rename(aug, "/a//d", "x");
+    CuAssertIntEquals(tc, 2, r);
+
+    // Label with a /
+    r = aug_rename(aug, "/a/e/x", "a/b");
+    CuAssertIntEquals(tc, -1, r);
+    CuAssertIntEquals(tc, AUG_ELABEL, aug_error(aug));
+
+    aug_close(aug);
+}
+
+static void testToXml(CuTest *tc) {
+    struct augeas *aug;
+    int r;
+    xmlNodePtr xmldoc;
+    const xmlChar *value;
+
+    aug = aug_init(root, loadpath, AUG_NO_STDINC|AUG_NO_LOAD);
+    r = aug_load(aug);
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_to_xml(aug, "/files/etc/passwd", &xmldoc, 0);
+    CuAssertRetSuccess(tc, r);
+
+    value = xmlGetProp(xmldoc, BAD_CAST "match");
+    CuAssertStrEquals(tc, "/files/etc/passwd", (const char*)value);
+
+    xmldoc = xmlFirstElementChild(xmldoc);
+    value = xmlGetProp(xmldoc, BAD_CAST "label");
+    CuAssertStrEquals(tc, "passwd", (const char*)value);
+
+    value = xmlGetProp(xmldoc, BAD_CAST "path");
+    CuAssertStrEquals(tc, "/files/etc/passwd", (const char*)value);
+
+    xmldoc = xmlFirstElementChild(xmldoc);
+    value = xmlGetProp(xmldoc, BAD_CAST "label");
+    CuAssertStrEquals(tc, "root", (const char*)value);
+
+    /* Bug #239 */
+    r = aug_set(aug, "/augeas/context", "/files/etc/passwd");
+    CuAssertRetSuccess(tc, r);
+    r = aug_to_xml(aug, ".", &xmldoc, 0);
+    CuAssertRetSuccess(tc, r);
+    xmldoc = xmlFirstElementChild(xmldoc);
+    value = xmlGetProp(xmldoc, BAD_CAST "label");
+    CuAssertStrEquals(tc, "passwd", (const char*)value);
+
+    aug_close(aug);
+}
+
+static void testTextStore(CuTest *tc) {
+    static const char *const hosts = "192.168.0.1 rtr.example.com router\n";
+    /* Not acceptable for Hosts.lns - missing canonical and \n */
+    static const char *const hosts_bad = "192.168.0.1";
+    const char *v;
+
+    struct augeas *aug;
+    int r;
+
+    aug = aug_init(root, loadpath, AUG_NO_STDINC|AUG_NO_LOAD);
+    CuAssertPtrNotNull(tc, aug);
+
+    r = aug_set(aug, "/raw/hosts", hosts);
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_text_store(aug, "Hosts.lns", "/raw/hosts", "/t1");
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_match(aug, "/t1/*", NULL);
+    CuAssertIntEquals(tc, 1, r);
+
+    /* Test bad lens name */
+    r = aug_text_store(aug, "Notthere.lns", "/raw/hosts", "/t2");
+    CuAssertIntEquals(tc, -1, r);
+    CuAssertIntEquals(tc, AUG_ENOLENS, aug_error(aug));
+
+    r = aug_match(aug, "/t2", NULL);
+    CuAssertIntEquals(tc, 0, r);
+
+    /* Test parse error */
+    r = aug_set(aug, "/raw/hosts_bad", hosts_bad);
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_text_store(aug, "Hosts.lns", "/raw/hosts_bad", "/t3");
+    CuAssertIntEquals(tc, -1, r);
+
+    r = aug_match(aug, "/t3", NULL);
+    CuAssertIntEquals(tc, 0, r);
+
+    r = aug_get(aug, "/augeas/text/t3/error", &v);
+    CuAssertIntEquals(tc, 1, r);
+    CuAssertStrEquals(tc, "parse_failed", v);
+
+    r = aug_text_store(aug, "Hosts.lns", "/raw/hosts", "/t3");
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_match(aug, "/augeas/text/t3/error", NULL);
+    CuAssertIntEquals(tc, 0, r);
+
+    /* Test invalid PATH */
+    r = aug_text_store(aug, "Hosts.lns", "/raw/hosts", "[garbage]");
+    CuAssertIntEquals(tc, -1, r);
+    CuAssertIntEquals(tc, AUG_EPATHX, aug_error(aug));
+
+    r = aug_match(aug, "/t2", NULL);
+    CuAssertIntEquals(tc, 0, r);
+}
+
+static void testTextRetrieve(CuTest *tc) {
+    static const char *const hosts = "192.168.0.1 rtr.example.com router\n";
+    const char *hosts_out;
+    struct augeas *aug;
+    int r;
+
+    aug = aug_init(root, loadpath, AUG_NO_STDINC|AUG_NO_LOAD);
+    CuAssertPtrNotNull(tc, aug);
+
+    r = aug_set(aug, "/raw/hosts", hosts);
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_text_store(aug, "Hosts.lns", "/raw/hosts", "/t1");
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_text_retrieve(aug, "Hosts.lns", "/raw/hosts", "/t1", "/out/hosts");
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_get(aug, "/out/hosts", &hosts_out);
+    CuAssertIntEquals(tc, 1, r);
+
+    CuAssertStrEquals(tc, hosts, hosts_out);
+}
+
 int main(void) {
     char *output = NULL;
     CuSuite* suite = CuSuiteNew();
     CuSuiteSetup(suite, NULL, NULL);
 
     SUITE_ADD_TEST(suite, testGet);
+    SUITE_ADD_TEST(suite, testSet);
     SUITE_ADD_TEST(suite, testSetM);
     SUITE_ADD_TEST(suite, testDefVarMeta);
     SUITE_ADD_TEST(suite, testDefNodeExistingMeta);
     SUITE_ADD_TEST(suite, testDefNodeCreateMeta);
     SUITE_ADD_TEST(suite, testNodeInfo);
+    SUITE_ADD_TEST(suite, testMv);
+    SUITE_ADD_TEST(suite, testCp);
+    SUITE_ADD_TEST(suite, testRename);
+    SUITE_ADD_TEST(suite, testToXml);
+    SUITE_ADD_TEST(suite, testTextStore);
+    SUITE_ADD_TEST(suite, testTextRetrieve);
 
     abs_top_srcdir = getenv("abs_top_srcdir");
     if (abs_top_srcdir == NULL)

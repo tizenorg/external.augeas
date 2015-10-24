@@ -65,6 +65,6 @@ let entry      = (set|include|service)
 let lns        = (comment|empty|entry) *
 
 let filter     = incl "/etc/monit/monitrc"
-               . Util.stdexcl
+               . incl "/etc/monitrc"
 
 let xfm        = transform lns filter

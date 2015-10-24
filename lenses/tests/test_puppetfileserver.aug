@@ -14,7 +14,10 @@ let fileserver = "# This a comment
   allow *
   deny *.evil.example.com
   deny badhost.domain2.com
-"
+[mount3]
+allow *   # Puppet #6026: same line comment
+# And trailing whitespace
+allow *    	\n"
 
 test PuppetFileserver.lns get fileserver =
 	{ "#comment" = "This a comment" }
@@ -30,4 +33,10 @@ test PuppetFileserver.lns get fileserver =
 		{ "allow" = "*" }
 		{ "deny" = "*.evil.example.com" }
 		{ "deny" = "badhost.domain2.com" }
+	}
+	{ "mount3"
+		{ "allow" = "*"
+			{ "#comment" = "Puppet #6026: same line comment" } }
+		{ "#comment" = "And trailing whitespace" }
+		{ "allow" = "*" }
 	}

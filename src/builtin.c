@@ -1,7 +1,7 @@
 /*
  * builtin.c: builtin primitives
  *
- * Copyright (C) 2007-2010 David Lutterkort
+ * Copyright (C) 2007-2011 David Lutterkort
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -86,14 +86,15 @@ static struct value *lns_counter(struct info *info, struct value *str) {
     return lns_make_prim(L_COUNTER, ref(info), NULL, ref(str->string));
 }
 
-/* V_REGEXP -> V_LENS -> V_LENS */
-static struct value *lns_square(struct info *info, struct value *rxp,
-                                struct value *lns) {
-    assert(rxp->tag == V_REGEXP);
-    assert(lns->tag == V_LENS);
+/* V_LENS -> V_LENS -> V_LENS -> V_LENS */
+static struct value *lns_square(struct info *info, struct value *l1,
+                                struct value *l2, struct value *l3) {
+    assert(l1->tag == V_LENS);
+    assert(l2->tag == V_LENS);
+    assert(l3->tag == V_LENS);
     int check = info->error->aug->flags & AUG_TYPE_CHECK;
 
-    return lns_make_square(ref(info), ref(rxp->regexp), ref(lns->lens), check);
+    return lns_make_square(ref(info), ref(l1->lens), ref(l2->lens), ref(l3->lens), check);
 }
 
 static struct value *make_exn_lns_error(struct info *info,
@@ -102,7 +103,7 @@ static struct value *make_exn_lns_error(struct info *info,
     struct value *v;
 
     if (HAS_ERR(info))
-        return exn_error();
+        return info->error->exn;
 
     v = make_exn_value(ref(info), "%s", err->message);
     if (err->lens != NULL) {
@@ -163,7 +164,7 @@ static struct value *pathx_parse_glue(struct info *info, struct value *tree,
     assert(tree->tag == V_TREE);
 
     if (pathx_parse(tree->origin, info->error, path->string->str, true,
-                    NULL, p) != PATHX_NOERROR) {
+                    NULL, NULL, p) != PATHX_NOERROR) {
         return make_pathx_exn(ref(info), *p);
     } else {
         return NULL;
@@ -486,6 +487,13 @@ static struct value *pr_endline(struct info *info, struct value *s) {
     return make_unit(ref(info));
 }
 
+/* V_TREE -> V_TREE */
+static struct value *pr_tree(ATTRIBUTE_UNUSED struct info *info,
+                             struct value *t) {
+    print_tree_braces(stdout, 0, t->origin);
+    return ref(t);
+}
+
 /*
  * Lens inspection
  */
@@ -527,9 +535,40 @@ static struct value *lns_fmt_atype(struct info *info, struct value *l) {
 
     r = lns_format_atype(l->lens, &s);
     if (r < 0)
-        return exn_error();
+        return info->error->exn;
     result = make_value(V_STRING, ref(info));
     result->string = make_string(s);
+    return result;
+}
+
+/* V_REGEXP -> V_STRING -> V_STRING */
+static struct value *rx_match(struct info *info,
+                              struct value *rx, struct value *s) {
+    struct value *result = NULL;
+    const char *str = s->string->str;
+    struct re_registers regs;
+    int r;
+
+    MEMZERO(&regs, 1);
+    r = regexp_match(rx->regexp, str, strlen(str), 0, &regs);
+    if (r < -1) {
+        result =
+            make_exn_value(ref(info), "regexp match failed (internal error)");
+    } else {
+        char *match = NULL;
+        if (r == -1) {
+            /* No match */
+            match = strdup("");
+        } else {
+            match = strndup(str + regs.start[0], regs.end[0] - regs.start[0]);
+        }
+        if (match == NULL) {
+            result = info->error->exn;
+        } else {
+            result = make_value(V_STRING, ref(info));
+            result->string = make_string(match);
+        }
+    }
     return result;
 }
 
@@ -551,7 +590,7 @@ struct module *builtin_init(struct error *error) {
     DEFINE_NATIVE(modl, "label",   1, lns_label, T_STRING, T_LENS);
     DEFINE_NATIVE(modl, "seq",     1, lns_seq, T_STRING, T_LENS);
     DEFINE_NATIVE(modl, "counter", 1, lns_counter, T_STRING, T_LENS);
-    DEFINE_NATIVE(modl, "square",  2, lns_square, T_REGEXP, T_LENS, T_LENS);
+    DEFINE_NATIVE(modl, "square",  3, lns_square, T_LENS, T_LENS, T_LENS, T_LENS);
     /* Applying lenses (mostly for tests) */
     DEFINE_NATIVE(modl, "get",     2, lens_get, T_LENS, T_STRING, T_TREE);
     DEFINE_NATIVE(modl, "put",     3, lens_put, T_LENS, T_TREE, T_STRING,
@@ -577,6 +616,7 @@ struct module *builtin_init(struct error *error) {
     DEFINE_NATIVE(modl, "print_string", 1, pr_string, T_STRING, T_UNIT);
     DEFINE_NATIVE(modl, "print_regexp", 1, pr_regexp, T_REGEXP, T_UNIT);
     DEFINE_NATIVE(modl, "print_endline", 1, pr_endline, T_STRING, T_UNIT);
+    DEFINE_NATIVE(modl, "print_tree", 1, pr_tree, T_TREE, T_TREE);
 
     /* Lens inspection */
     DEFINE_NATIVE(modl, "lens_ctype", 1, lns_ctype, T_LENS, T_REGEXP);
@@ -585,6 +625,10 @@ struct module *builtin_init(struct error *error) {
     DEFINE_NATIVE(modl, "lens_ktype", 1, lns_ktype, T_LENS, T_REGEXP);
     DEFINE_NATIVE(modl, "lens_format_atype", 1, lns_fmt_atype,
                   T_LENS, T_STRING);
+
+    /* Regexp matching */
+    DEFINE_NATIVE(modl, "regexp_match", 2, rx_match, T_REGEXP, T_STRING,
+                  T_STRING);
 
     /* System functions */
     struct module *sys = module_create("Sys");

@@ -1,7 +1,7 @@
 /*
  * transform.c: support for building and running transformers
  *
- * Copyright (C) 2007-2010 David Lutterkort
+ * Copyright (C) 2007-2011 David Lutterkort
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -27,6 +27,7 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <selinux/selinux.h>
 #include <stdbool.h>
@@ -141,6 +142,33 @@ static char *mtime_as_string(struct augeas *aug, const char *fname) {
     return NULL;
 }
 
+/* fnmatch(3) which will match // in a pattern to a path, like glob(3) does */
+static int fnmatch_normalize(const char *pattern, const char *string, int flags) {
+    int i, j, r;
+    char *pattern_norm = NULL;
+
+    r = ALLOC_N(pattern_norm, strlen(pattern) + 1);
+    if (r < 0)
+        goto error;
+
+    for (i = 0, j = 0; i < strlen(pattern); i++) {
+        if (pattern[i] != '/' || pattern[i+1] != '/') {
+            pattern_norm[j] = pattern[i];
+            j++;
+        }
+    }
+    pattern_norm[j] = 0;
+
+    r = fnmatch(pattern_norm, string, flags);
+    FREE(pattern_norm);
+    return r;
+
+ error:
+    if (pattern_norm != NULL)
+        FREE(pattern_norm);
+    return -1;
+}
+
 static bool file_current(struct augeas *aug, const char *fname,
                          struct tree *finfo) {
     struct tree *mtime = tree_child(finfo, s_mtime);
@@ -169,7 +197,7 @@ static bool file_current(struct augeas *aug, const char *fname,
     if (path == NULL)
         return false;
 
-    file = tree_find(aug, path->value);
+    file = tree_fpath(aug, path->value);
     return (file != NULL && ! file->dirty);
 }
 
@@ -179,6 +207,9 @@ static int filter_generate(struct tree *xfm, const char *root,
     int gl_flags = glob_flags;
     int r;
     int ret = 0;
+    char **pathv = NULL;
+    int pathc = 0;
+    int root_prefix = strlen(root) - 1;
 
     *nmatches = 0;
     *matches = NULL;
@@ -192,21 +223,19 @@ static int filter_generate(struct tree *xfm, const char *root,
         r = glob(globpat, gl_flags, NULL, &globbuf);
         free(globpat);
 
-        if (r != 0 && r != GLOB_NOMATCH) {
-            ret = -1;
+        if (r != 0 && r != GLOB_NOMATCH)
             goto error;
-        }
         gl_flags |= GLOB_APPEND;
     }
 
-    char **pathv = NULL;
-    int pathc = globbuf.gl_pathc, pathind = 0;
+    pathc = globbuf.gl_pathc;
+    int pathind = 0;
 
     if (ALLOC_N(pathv, pathc) < 0)
         goto error;
 
     for (int i=0; i < pathc; i++) {
-        const char *path = globbuf.gl_pathv[i];
+        const char *path = globbuf.gl_pathv[i] + root_prefix;
         bool include = true;
 
         list_for_each(e, xfm->children) {
@@ -215,9 +244,12 @@ static int filter_generate(struct tree *xfm, const char *root,
 
             if (strchr(e->value, SEP) == NULL)
                 path = pathbase(path);
-            if ((r = fnmatch(e->value, path, fnm_flags)) == 0) {
+
+            r = fnmatch_normalize(e->value, path, fnm_flags);
+            if (r < 0)
+                goto error;
+            else if (r == 0)
                 include = false;
-            }
         }
 
         if (include)
@@ -252,7 +284,7 @@ static int filter_generate(struct tree *xfm, const char *root,
 static int filter_matches(struct tree *xfm, const char *path) {
     int found = 0;
     list_for_each(f, xfm->children) {
-        if (is_incl(f) && fnmatch(f->value, path, fnm_flags) == 0) {
+        if (is_incl(f) && fnmatch_normalize(f->value, path, fnm_flags) == 0) {
             found = 1;
             break;
         }
@@ -260,7 +292,7 @@ static int filter_matches(struct tree *xfm, const char *path) {
     if (! found)
         return 0;
     list_for_each(f, xfm->children) {
-        if (is_excl(f) && (fnmatch(f->value, path, fnm_flags) == 0))
+        if (is_excl(f) && (fnmatch_normalize(f->value, path, fnm_flags) == 0))
             return 0;
     }
     return 1;
@@ -322,8 +354,9 @@ static void err_set(struct augeas *aug,
 }
 
 /* Record an error in the tree. The error will show up underneath
- * /augeas/FILENAME/error. PATH is the path to the toplevel node in the
- * tree where the lens application happened. When STATUS is NULL, just
+ * /augeas/FILENAME/error if filename is not NULL, and underneath
+ * /augeas/text/PATH otherwise. PATH is the path to the toplevel node in
+ * the tree where the lens application happened. When STATUS is NULL, just
  * clear any error associated with FILENAME in the tree.
  */
 static int store_error(struct augeas *aug,
@@ -335,10 +368,14 @@ static int store_error(struct augeas *aug,
     int r;
     int result = -1;
 
-    r = pathjoin(&fip, 2, AUGEAS_META_FILES, filename);
+    if (filename != NULL) {
+        r = pathjoin(&fip, 2, AUGEAS_META_FILES, filename);
+    } else {
+        r = pathjoin(&fip, 2, AUGEAS_META_TEXT, path);
+    }
     ERR_NOMEM(r < 0, aug);
 
-    finfo = tree_find_cr(aug, fip);
+    finfo = tree_fpath_cr(aug, fip);
     ERR_BAIL(aug);
 
     if (status != NULL) {
@@ -378,11 +415,8 @@ static int store_error(struct augeas *aug,
     } else {
         /* No error, nuke the error node if it exists */
         err_info = tree_child(finfo, s_error);
-        if (err_info != NULL) {
-            tree_unlink_children(aug, err_info);
-            pathx_symtab_remove_descendants(aug->symtab, err_info);
-            tree_unlink(err_info);
-        }
+        if (err_info != NULL)
+            tree_unlink(aug, err_info);
     }
 
     tree_clean(finfo);
@@ -402,7 +436,7 @@ static int store_error(struct augeas *aug,
  */
 static int add_file_info(struct augeas *aug, const char *node,
                          struct lens *lens, const char *lens_name,
-                         const char *filename) {
+                         const char *filename, bool force_reload) {
     struct tree *file, *tree;
     char *tmp = NULL;
     int r;
@@ -415,7 +449,7 @@ static int add_file_info(struct augeas *aug, const char *node,
     r = pathjoin(&path, 2, AUGEAS_META_TREE, node);
     ERR_NOMEM(r < 0, aug);
 
-    file = tree_find_cr(aug, path);
+    file = tree_fpath_cr(aug, path);
     ERR_BAIL(aug);
 
     /* Set 'path' */
@@ -425,8 +459,13 @@ static int add_file_info(struct augeas *aug, const char *node,
     ERR_NOMEM(r < 0, aug);
 
     /* Set 'mtime' */
-    tmp = mtime_as_string(aug, filename);
-    ERR_BAIL(aug);
+    if (force_reload) {
+        tmp = strdup("0");
+        ERR_NOMEM(tmp == NULL, aug);
+    } else {
+        tmp = mtime_as_string(aug, filename);
+        ERR_BAIL(aug);
+    }
     tree = tree_child_cr(file, s_mtime);
     ERR_NOMEM(tree == NULL, aug);
     tree_store_value(tree, &tmp);
@@ -476,11 +515,25 @@ static char *file_name_path(struct augeas *aug, const char *fname) {
     return path;
 }
 
+/* Replace the subtree for FPATH with SUB */
+static void tree_freplace(struct augeas *aug, const char *fpath,
+                         struct tree *sub) {
+    struct tree *parent;
+
+    parent = tree_fpath_cr(aug, fpath);
+    ERR_RET(aug);
+
+    tree_unlink_children(aug, parent);
+    list_append(parent->children, sub);
+    list_for_each(s, sub) {
+        s->parent = parent;
+    }
+}
+
 static int load_file(struct augeas *aug, struct lens *lens,
                      const char *lens_name, char *filename) {
     char *text = NULL;
     const char *err_status = NULL;
-    struct aug_file *file = NULL;
     struct tree *tree = NULL;
     char *path = NULL;
     struct lns_error *err = NULL;
@@ -490,7 +543,7 @@ static int load_file(struct augeas *aug, struct lens *lens,
     path = file_name_path(aug, filename);
     ERR_NOMEM(path == NULL, aug);
 
-    r = add_file_info(aug, path, lens, lens_name, filename);
+    r = add_file_info(aug, path, lens, lens_name, filename, false);
     if (r < 0)
         goto done;
 
@@ -524,10 +577,11 @@ static int load_file(struct augeas *aug, struct lens *lens,
         goto done;
     }
 
-    tree_replace(aug, path, tree);
+    tree_freplace(aug, path, tree);
+    ERR_BAIL(aug);
 
     /* top level node span entire file length */
-    if (span != NULL) {
+    if (span != NULL && tree != NULL) {
         tree->parent->span = span;
         tree->parent->span->span_start = 0;
         tree->parent->span->span_end = text_len;
@@ -543,7 +597,6 @@ static int load_file(struct augeas *aug, struct lens *lens,
     free_lns_error(err);
     free(path);
     free_tree(tree);
-    free(file);
     free(text);
     return result;
 }
@@ -576,6 +629,53 @@ static struct lens *lens_from_name(struct augeas *aug, const char *name) {
     return NULL;
 }
 
+int text_store(struct augeas *aug, const char *lens_path,
+               const char *path, const char *text) {
+    struct info *info = NULL;
+    struct lns_error *err = NULL;
+    struct tree *tree = NULL;
+    struct span *span = NULL;
+    int result = -1;
+    const char *err_status = NULL;
+    struct lens *lens = NULL;
+
+    lens = lens_from_name(aug, lens_path);
+    ERR_BAIL(aug);
+
+    make_ref(info);
+    info->first_line = 1;
+    info->last_line = 1;
+    info->first_column = 1;
+    info->last_column = strlen(text);
+
+    tree = lns_get(info, lens, text, &err);
+    if (err != NULL) {
+        err_status = "parse_failed";
+        goto error;
+    }
+
+    unref(info, info);
+
+    tree_freplace(aug, path, tree);
+    ERR_BAIL(aug);
+
+    /* top level node span entire file length */
+    if (span != NULL && tree != NULL) {
+        tree->parent->span = span;
+        tree->parent->span->span_start = 0;
+        tree->parent->span->span_end = strlen(text);
+    }
+
+    tree = NULL;
+
+    result = 0;
+ error:
+    store_error(aug, NULL, path, err_status, errno, err, text);
+    free_tree(tree);
+    free_lns_error(err);
+    return result;
+}
+
 const char *xfm_lens_name(struct tree *xfm) {
     struct tree *l = tree_child(xfm, s_lens);
 
@@ -602,7 +702,7 @@ static struct lens *xfm_lens(struct augeas *aug,
 }
 
 static void xfm_error(struct tree *xfm, const char *msg) {
-    char *v = strdup(msg);
+    char *v = msg ? strdup(msg) : NULL;
     char *l = strdup("error");
 
     if (l == NULL || v == NULL)
@@ -614,12 +714,22 @@ int transform_validate(struct augeas *aug, struct tree *xfm) {
     struct tree *l = NULL;
 
     for (struct tree *t = xfm->children; t != NULL; ) {
-        if (streqv(t->label, "lens"))
+        if (streqv(t->label, "lens")) {
             l = t;
+        } else if ((is_incl(t) || (is_excl(t) && strchr(t->value, SEP) != NULL))
+                       && t->value[0] != SEP) {
+            /* Normalize relative paths to absolute ones */
+            int r;
+            r = REALLOC_N(t->value, strlen(t->value) + 2);
+            ERR_NOMEM(r < 0, aug);
+            memmove(t->value + 1, t->value, strlen(t->value) + 1);
+            t->value[0] = SEP;
+        }
+
         if (streqv(t->label, "error")) {
             struct tree *del = t;
             t = del->next;
-            tree_unlink(del);
+            tree_unlink(aug, del);
         } else {
             t = t->next;
         }
@@ -634,11 +744,12 @@ int transform_validate(struct augeas *aug, struct tree *xfm) {
         return -1;
     }
     lens_from_name(aug, l->value);
-    if (HAS_ERR(aug)) {
-        xfm_error(xfm, aug->error->details);
-        return -1;
-    }
+    ERR_BAIL(aug);
+
     return 0;
+ error:
+    xfm_error(xfm, aug->error->details);
+    return -1;
 }
 
 void transform_file_error(struct augeas *aug, const char *status,
@@ -649,7 +760,7 @@ void transform_file_error(struct augeas *aug, const char *status,
     va_list ap;
     int r;
 
-    err = tree_find_cr(aug, ep);
+    err = tree_fpath_cr(aug, ep);
     if (err == NULL)
         return;
 
@@ -677,7 +788,7 @@ static struct tree *file_info(struct augeas *aug, const char *fname) {
     r = pathjoin(&path, 2, AUGEAS_META_FILES, fname);
     ERR_NOMEM(r < 0, aug);
 
-    result = tree_find(aug, path);
+    result = tree_fpath(aug, path);
     ERR_BAIL(aug);
  error:
     free(path);
@@ -729,35 +840,38 @@ int transform_applies(struct tree *xfm, const char *path) {
     return filter_matches(xfm, path + strlen(AUGEAS_FILES_TREE));
 }
 
-static int transfer_file_attrs(const char *from, const char *to,
+static int transfer_file_attrs(FILE *from, FILE *to,
                                const char **err_status) {
     struct stat st;
     int ret = 0;
     int selinux_enabled = (is_selinux_enabled() > 0);
     security_context_t con = NULL;
 
-    ret = lstat(from, &st);
+    int from_fd = fileno(from);
+    int to_fd = fileno(to);
+
+    ret = fstat(from_fd, &st);
     if (ret < 0) {
         *err_status = "replace_stat";
         return -1;
     }
     if (selinux_enabled) {
-        if (lgetfilecon(from, &con) < 0 && errno != ENOTSUP) {
+        if (fgetfilecon(from_fd, &con) < 0 && errno != ENOTSUP) {
             *err_status = "replace_getfilecon";
             return -1;
         }
     }
 
-    if (lchown(to, st.st_uid, st.st_gid) < 0) {
+    if (fchown(to_fd, st.st_uid, st.st_gid) < 0) {
         *err_status = "replace_chown";
         return -1;
     }
-    if (chmod(to, st.st_mode) < 0) {
+    if (fchmod(to_fd, st.st_mode) < 0) {
         *err_status = "replace_chmod";
         return -1;
     }
     if (selinux_enabled && con != NULL) {
-        if (lsetfilecon(to, con) < 0 && errno != ENOTSUP) {
+        if (fsetfilecon(to_fd, con) < 0 && errno != ENOTSUP) {
             *err_status = "replace_setfilecon";
             return -1;
         }
@@ -771,14 +885,21 @@ static int transfer_file_attrs(const char *from, const char *to,
  * means that FROM or TO is a bindmounted file), and COPY_IF_RENAME_FAILS
  * is true, copy the contents of FROM into TO and delete FROM.
  *
+ * If COPY_IF_RENAME_FAILS and UNLINK_IF_RENAME_FAILS are true, and the above
+ * copy mechanism is used, it will unlink the TO path and open with O_EXCL
+ * to ensure we only copy *from* a bind mount rather than into an attacker's
+ * mount placed at TO (e.g. for .augsave).
+ *
  * Return 0 on success (either rename succeeded or we copied the contents
  * over successfully), -1 on failure.
  */
 static int clone_file(const char *from, const char *to,
-                      const char **err_status, int copy_if_rename_fails) {
+                      const char **err_status, int copy_if_rename_fails,
+                      int unlink_if_rename_fails) {
     FILE *from_fp = NULL, *to_fp = NULL;
     char buf[BUFSIZ];
     size_t len;
+    int to_fd = -1, to_oflags, r;
     int result = -1;
 
     if (rename(from, to) == 0)
@@ -789,18 +910,30 @@ static int clone_file(const char *from, const char *to,
     }
 
     /* rename not possible, copy file contents */
-    from_fp = fopen(from, "r");
     if (!(from_fp = fopen(from, "r"))) {
         *err_status = "clone_open_src";
         goto done;
     }
 
-    if (!(to_fp = fopen(to, "w"))) {
+    if (unlink_if_rename_fails) {
+        r = unlink(to);
+        if (r < 0) {
+            *err_status = "clone_unlink_dst";
+            goto done;
+        }
+    }
+
+    to_oflags = unlink_if_rename_fails ? O_EXCL : O_TRUNC;
+    if ((to_fd = open(to, O_WRONLY|O_CREAT|to_oflags, S_IRUSR|S_IWUSR)) < 0) {
         *err_status = "clone_open_dst";
         goto done;
     }
+    if (!(to_fp = fdopen(to_fd, "w"))) {
+        *err_status = "clone_fdopen_dst";
+        goto done;
+    }
 
-    if (transfer_file_attrs(from, to, err_status) < 0)
+    if (transfer_file_attrs(from_fp, to_fp, err_status) < 0)
         goto done;
 
     while ((len = fread(buf, 1, BUFSIZ, from_fp)) > 0) {
@@ -823,9 +956,17 @@ static int clone_file(const char *from, const char *to,
     }
     result = 0;
  done:
-    fclose(from_fp);
-    if (fclose(to_fp) != 0)
+    if (from_fp != NULL)
+        fclose(from_fp);
+    if (to_fp != NULL) {
+        if (fclose(to_fp) != 0) {
+            *err_status = "clone_fclose_dst";
+            result = -1;
+        }
+    } else if (to_fd >= 0 && close(to_fd) < 0) {
+        *err_status = "clone_close_dst";
         result = -1;
+    }
     if (result != 0)
         unlink(to);
     if (result == 0)
@@ -851,8 +992,8 @@ static int file_saved_event(struct augeas *aug, const char *path) {
     struct tree *dummy;
     int r;
 
-    px = pathx_aug_parse(aug, aug->origin, AUGEAS_EVENTS_SAVED "[last()]",
-                         true);
+    px = pathx_aug_parse(aug, aug->origin, NULL,
+                         AUGEAS_EVENTS_SAVED "[last()]", true);
     ERR_BAIL(aug);
 
     if (pathx_find_one(px, &dummy) == 1) {
@@ -876,19 +1017,38 @@ static int file_saved_event(struct augeas *aug, const char *path) {
  * are noted in the /augeas/files hierarchy in AUG->ORIGIN under
  * PATH/error.
  *
- * Writing the file happens by first writing into PATH.augnew, transferring
- * all file attributes of PATH to PATH.augnew, and then renaming
- * PATH.augnew to PATH. If the rename fails, and the entry
- * AUGEAS_COPY_IF_FAILURE exists in AUG->ORIGIN, PATH is overwritten by
- * copying file contents
+ * Writing the file happens by first writing into a temp file, transferring all
+ * file attributes of PATH to the temp file, and then renaming the temp file
+ * back to PATH.
+ *
+ * Temp files are created alongside the destination file to enable the rename,
+ * which may be the canonical path (PATH_canon) if PATH is a symlink.
+ *
+ * If the AUG_SAVE_NEWFILE flag is set, instead rename to PATH.augnew rather
+ * than PATH.  If AUG_SAVE_BACKUP is set, move the original to PATH.augsave.
+ * (Always PATH.aug{new,save} irrespective of whether PATH is a symlink.)
+ *
+ * If the rename fails, and the entry AUGEAS_COPY_IF_FAILURE exists in
+ * AUG->ORIGIN, PATH is instead overwritten by copying file contents.
+ *
+ * The table below shows the locations for each permutation.
+ *
+ * PATH       save flag    temp file           dest file      backup?
+ * regular    -            PATH.XXXX           PATH           -
+ * regular    BACKUP       PATH.XXXX           PATH           PATH.augsave
+ * regular    NEWFILE      PATH.augnew.XXXX    PATH.augnew    -
+ * symlink    -            PATH_canon.XXXX     PATH_canon     -
+ * symlink    BACKUP       PATH_canon.XXXX     PATH_canon     PATH.augsave
+ * symlink    NEWFILE      PATH.augnew.XXXX    PATH.augnew    -
  *
  * Return 0 on success, -1 on failure.
  */
 int transform_save(struct augeas *aug, struct tree *xfm,
                    const char *path, struct tree *tree) {
-    FILE *fp = NULL;
-    char *augnew = NULL, *augorig = NULL, *augsave = NULL;
-    char *augorig_canon = NULL;
+    int   fd;
+    FILE *fp = NULL, *augorig_canon_fp = NULL;
+    char *augtemp = NULL, *augnew = NULL, *augorig = NULL, *augsave = NULL;
+    char *augorig_canon = NULL, *augdest = NULL;
     int   augorig_exists;
     int   copy_if_rename_fails = 0;
     char *text = NULL;
@@ -899,6 +1059,7 @@ int transform_save(struct augeas *aug, struct tree *xfm,
     const char *lens_name;
     struct lens *lens = xfm_lens(aug, xfm, &lens_name);
     int result = -1, r;
+    bool force_reload;
 
     errno = 0;
 
@@ -915,19 +1076,6 @@ int transform_save(struct augeas *aug, struct tree *xfm,
         goto done;
     }
 
-    if (access(augorig, R_OK) == 0) {
-        text = xread_file(augorig);
-    } else {
-        text = strdup("");
-    }
-
-    if (text == NULL) {
-        err_status = "put_read";
-        goto done;
-    }
-
-    text = append_newline(text, strlen(text));
-
     augorig_canon = canonicalize_file_name(augorig);
     augorig_exists = 1;
     if (augorig_canon == NULL) {
@@ -940,33 +1088,65 @@ int transform_save(struct augeas *aug, struct tree *xfm,
         }
     }
 
-    /* Figure out where to put the .augnew file. If we need to rename it
-       later on, put it next to augorig_canon */
+    if (access(augorig_canon, R_OK) == 0) {
+        augorig_canon_fp = fopen(augorig_canon, "r");
+        text = xfread_file(augorig_canon_fp);
+    } else {
+        text = strdup("");
+    }
+
+    if (text == NULL) {
+        err_status = "put_read";
+        goto done;
+    }
+
+    text = append_newline(text, strlen(text));
+
+    /* Figure out where to put the .augnew and temp file. If no .augnew file
+       then put the temp file next to augorig_canon, else next to .augnew. */
     if (aug->flags & AUG_SAVE_NEWFILE) {
         if (xasprintf(&augnew, "%s" EXT_AUGNEW, augorig) < 0) {
             err_status = "augnew_oom";
             goto done;
         }
+        augdest = augnew;
     } else {
-        if (xasprintf(&augnew, "%s" EXT_AUGNEW, augorig_canon) < 0) {
-            err_status = "augnew_oom";
-            goto done;
-        }
+        augdest = augorig_canon;
+    }
+
+    if (xasprintf(&augtemp, "%s.XXXXXX", augdest) < 0) {
+        err_status = "augtemp_oom";
+        goto done;
     }
 
     // FIXME: We might have to create intermediate directories
     // to be able to write augnew, but we have no idea what permissions
     // etc. they should get. Just the process default ?
-    fp = fopen(augnew, "w");
+    fd = mkstemp(augtemp);
+    if (fd < 0) {
+        err_status = "mk_augtemp";
+        goto done;
+    }
+    fp = fdopen(fd, "w");
     if (fp == NULL) {
-        err_status = "open_augnew";
+        err_status = "open_augtemp";
         goto done;
     }
 
     if (augorig_exists) {
-        if (transfer_file_attrs(augorig_canon, augnew, &err_status) != 0) {
+        if (transfer_file_attrs(augorig_canon_fp, fp, &err_status) != 0) {
             err_status = "xfer_attrs";
             goto done;
+        }
+    } else {
+        /* Since mkstemp is used, the temp file will have secure permissions
+         * instead of those implied by umask, so change them for new files */
+        mode_t curumsk = umask(022);
+        umask(curumsk);
+
+        if (fchmod(fileno(fp), 0666 & ~curumsk) < 0) {
+            err_status = "create_chmod";
+            return -1;
         }
     }
 
@@ -974,78 +1154,81 @@ int transform_save(struct augeas *aug, struct tree *xfm,
         lns_put(fp, lens, tree->children, text, &err);
 
     if (ferror(fp)) {
-        err_status = "error_augnew";
+        err_status = "error_augtemp";
         goto done;
     }
 
     if (fflush(fp) != 0) {
-        err_status = "flush_augnew";
+        err_status = "flush_augtemp";
         goto done;
     }
 
     if (fsync(fileno(fp)) < 0) {
-        err_status = "sync_augnew";
+        err_status = "sync_augtemp";
         goto done;
     }
 
     if (fclose(fp) != 0) {
-        err_status = "close_augnew";
+        err_status = "close_augtemp";
+        fp = NULL;
         goto done;
     }
 
     fp = NULL;
 
     if (err != NULL) {
-        err_status = "put_failed";
-        unlink(augnew);
+        err_status = err->pos >= 0 ? "parse_skel_failed" : "put_failed";
+        unlink(augtemp);
         goto done;
     }
 
     {
-        char *new_text = xread_file(augnew);
+        char *new_text = xread_file(augtemp);
         int same = 0;
         if (new_text == NULL) {
-            err_status = "read_augnew";
+            err_status = "read_augtemp";
             goto done;
         }
         same = STREQ(text, new_text);
         FREE(new_text);
         if (same) {
             result = 0;
-            unlink(augnew);
+            unlink(augtemp);
             goto done;
         } else if (aug->flags & AUG_SAVE_NOOP) {
             result = 1;
-            unlink(augnew);
+            unlink(augtemp);
             goto done;
         }
     }
 
     if (!(aug->flags & AUG_SAVE_NEWFILE)) {
         if (augorig_exists && (aug->flags & AUG_SAVE_BACKUP)) {
-            r = asprintf(&augsave, "%s%s" EXT_AUGSAVE, aug->root, filename);
+            r = xasprintf(&augsave, "%s" EXT_AUGSAVE, augorig);
             if (r == -1) {
                 augsave = NULL;
                 goto done;
             }
 
-            r = clone_file(augorig_canon, augsave, &err_status, 1);
+            r = clone_file(augorig_canon, augsave, &err_status, 1, 1);
             if (r != 0) {
                 dyn_err_status = strappend(err_status, "_augsave");
                 goto done;
             }
         }
-        r = clone_file(augnew, augorig_canon, &err_status,
-                       copy_if_rename_fails);
-        if (r != 0) {
-            dyn_err_status = strappend(err_status, "_augnew");
-            goto done;
-        }
     }
+
+    r = clone_file(augtemp, augdest, &err_status, copy_if_rename_fails, 0);
+    if (r != 0) {
+        dyn_err_status = strappend(err_status, "_augtemp");
+        goto done;
+    }
+
     result = 1;
 
  done:
-    r = add_file_info(aug, path, lens, lens_name, augorig);
+    force_reload = aug->flags & AUG_SAVE_NEWFILE;
+    r = add_file_info(aug, path, lens, lens_name, augorig, force_reload);
     if (r < 0) {
         err_status = "file_info";
         result = -1;
@@ -1060,11 +1243,12 @@ int transform_save(struct augeas *aug, struct tree *xfm,
     {
         const char *emsg =
             dyn_err_status == NULL ? err_status : dyn_err_status;
-        store_error(aug, filename, path, emsg, errno, err, NULL);
+        store_error(aug, filename, path, emsg, errno, err, text);
     }
     free(dyn_err_status);
     lens_release(lens);
     free(text);
+    free(augtemp);
     free(augnew);
     if (augorig_canon != augorig)
         free(augorig_canon);
@@ -1074,6 +1258,74 @@ int transform_save(struct augeas *aug, struct tree *xfm,
 
     if (fp != NULL)
         fclose(fp);
+    if (augorig_canon_fp != NULL)
+        fclose(augorig_canon_fp);
+    return result;
+}
+
+int text_retrieve(struct augeas *aug, const char *lens_name,
+                  const char *path, struct tree *tree,
+                  const char *text_in, char **text_out) {
+    struct memstream ms;
+    bool ms_open = false;
+    const char *err_status = NULL;
+    char *dyn_err_status = NULL;
+    struct lns_error *err = NULL;
+    struct lens *lens = NULL;
+    int result = -1, r;
+
+    MEMZERO(&ms, 1);
+    errno = 0;
+
+    lens = lens_from_name(aug, lens_name);
+    if (lens == NULL) {
+        err_status = "lens_name";
+        goto done;
+    }
+
+    r = init_memstream(&ms);
+    if (r < 0) {
+        err_status = "init_memstream";
+        goto done;
+    }
+    ms_open = true;
+
+    if (tree != NULL)
+        lns_put(ms.stream, lens, tree->children, text_in, &err);
+
+    r = close_memstream(&ms);
+    ms_open = false;
+    if (r < 0) {
+        err_status = "close_memstream";
+        goto done;
+    }
+
+    *text_out = ms.buf;
+    ms.buf = NULL;
+
+    if (err != NULL) {
+        err_status = err->pos >= 0 ? "parse_skel_failed" : "put_failed";
+        goto done;
+    }
+
+    result = 0;
+
+ done:
+    {
+        const char *emsg =
+            dyn_err_status == NULL ? err_status : dyn_err_status;
+        store_error(aug, NULL, path, emsg, errno, err, text_in);
+    }
+    free(dyn_err_status);
+    lens_release(lens);
+    if (result < 0) {
+        free(*text_out);
+        *text_out = NULL;
+    }
+    free_lns_error(err);
+
+    if (ms_open)
+        close_memstream(&ms);
     return result;
 }
 
@@ -1124,7 +1376,7 @@ int remove_file(struct augeas *aug, struct tree *tree) {
                 goto error;
         }
 
-        r = clone_file(augorig_canon, augsave, &err_status, 1);
+        r = clone_file(augorig_canon, augsave, &err_status, 1, 1);
         if (r != 0) {
             dyn_err_status = strappend(err_status, "_augsave");
             goto error;
@@ -1137,7 +1389,7 @@ int remove_file(struct augeas *aug, struct tree *tree) {
             goto error;
         }
     }
-    tree_unlink(tree);
+    tree_unlink(aug, tree);
  done:
     free(path);
     free(augorig);

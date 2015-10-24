@@ -1,5 +1,5 @@
-# stpncpy.m4 serial 13
-dnl Copyright (C) 2002-2003, 2005-2007, 2009-2011 Free Software Foundation,
+# stpncpy.m4 serial 16
+dnl Copyright (C) 2002-2003, 2005-2007, 2009-2012 Free Software Foundation,
 dnl Inc.
 dnl This file is free software; the Free Software Foundation
 dnl gives unlimited permission to copy and/or distribute it,
@@ -35,7 +35,11 @@ AC_DEFUN([gl_FUNC_STPNCPY],
 #include <string.h> /* for strcpy */
 /* The stpncpy prototype is missing in <string.h> on AIX 4.  */
 #if !HAVE_DECL_STPNCPY
-extern char *stpncpy (char *dest, const char *src, size_t n);
+extern
+# ifdef __cplusplus
+"C"
+# endif
+char *stpncpy (char *dest, const char *src, size_t n);
 #endif
 int main ()
 {
@@ -70,21 +74,20 @@ int main ()
 #ifdef __GNU_LIBRARY__
   Thanks for using GNU
 #endif
-], [gl_cv_func_stpncpy=yes], [gl_cv_func_stpncpy=no])
+], [gl_cv_func_stpncpy="guessing yes"], [gl_cv_func_stpncpy="guessing no"])
         ])
     ])
-    if test $gl_cv_func_stpncpy = yes; then
-      AC_DEFINE([HAVE_STPNCPY], [1],
-        [Define if you have the stpncpy() function and it works.])
-    else
-      REPLACE_STPNCPY=1
-      AC_LIBOBJ([stpncpy])
-      gl_PREREQ_STPNCPY
-    fi
+    case "$gl_cv_func_stpncpy" in
+      *yes)
+        AC_DEFINE([HAVE_STPNCPY], [1],
+          [Define if you have the stpncpy() function and it works.])
+        ;;
+      *)
+        REPLACE_STPNCPY=1
+        ;;
+    esac
   else
     HAVE_STPNCPY=0
-    AC_LIBOBJ([stpncpy])
-    gl_PREREQ_STPNCPY
   fi
 ])
 

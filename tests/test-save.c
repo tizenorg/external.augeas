@@ -1,7 +1,7 @@
 /*
  * test-save.c: test various aspects of saving
  *
- * Copyright (C) 2009 Red Hat Inc.
+ * Copyright (C) 2009-2011 Red Hat Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -26,8 +26,10 @@
 #include "cutest.h"
 
 #include <stdio.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 const char *abs_top_srcdir;
 const char *abs_top_builddir;
@@ -51,6 +53,7 @@ static void setup(CuTest *tc) {
     if (asprintf(&lensdir, "%s/lenses", abs_top_srcdir) < 0)
         CuFail(tc, "asprintf lensdir failed");
 
+    umask(0022);
     run(tc, "test -d %s && chmod -R u+w %s || :", root, root);
     run(tc, "rm -rf %s", root);
     run(tc, "mkdir -p %s", root);
@@ -62,10 +65,39 @@ static void setup(CuTest *tc) {
 }
 
 static void teardown(ATTRIBUTE_UNUSED CuTest *tc) {
+    /* testRemovePermission makes <root>/etc nonwritable. That leads
+       to an error from 'make distcheck' make sure that directory is
+       writable by the user after the test */
+    run(tc, "chmod u+w %s/etc", root);
+
     aug_close(aug);
     aug = NULL;
     free(root);
     root = NULL;
+}
+
+static void testRemoveNoPermission(CuTest *tc) {
+    if (getuid() == 0) {
+        puts("pending (testRemoveNoPermission): can't test permissions under root account");
+        return;
+    }
+
+    int r;
+    const char *errmsg;
+
+    // Prevent deletion of files
+    run(tc, "chmod 0500 %s/etc", root);
+
+    r = aug_rm(aug, "/files/etc/hosts");
+    CuAssertTrue(tc, r > 0);
+
+    r = aug_save(aug);
+    CuAssertIntEquals(tc, -1, r);
+
+    r = aug_get(aug, "/augeas/files/etc/hosts/error", &errmsg);
+    CuAssertIntEquals(tc, 1, r);
+    CuAssertPtrNotNull(tc, errmsg);
+    CuAssertStrEquals(tc, "unlink_orig", errmsg);
 }
 
 static void testSaveNewFile(CuTest *tc) {
@@ -145,6 +177,125 @@ static void testMtime(CuTest *tc) {
     CuAssertStrNotEqual(tc, "0", mtime2);
 }
 
+/* Check that loading and saving a file given with a relative path
+ * works. Bug #238
+ */
+static void testRelPath(CuTest *tc) {
+    int r;
+
+    r = aug_rm(aug, "/augeas/load/*");
+    CuAssertPositive(tc, r);
+
+    r = aug_set(aug, "/augeas/load/Hosts/lens", "Hosts.lns");
+    CuAssertRetSuccess(tc, r);
+    r = aug_set(aug, "/augeas/load/Hosts/incl", "etc/hosts");
+    CuAssertRetSuccess(tc, r);
+    r = aug_load(aug);
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_match(aug, "/files/etc/hosts/1/alias[ . = 'new']", NULL);
+    CuAssertIntEquals(tc, 0, r);
+
+    r = aug_set(aug, "/files/etc/hosts/1/alias[last() + 1]", "new");
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_save(aug);
+    CuAssertRetSuccess(tc, r);
+    r = aug_match(aug, "/augeas//error", NULL);
+    CuAssertIntEquals(tc, 0, r);
+
+    /* Force reloading the file */
+    r = aug_rm(aug, "/augeas/files//mtime");
+    CuAssertPositive(tc, r);
+
+    r = aug_load(aug);
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_match(aug, "/files/etc/hosts/1/alias[. = 'new']", NULL);
+    CuAssertIntEquals(tc, 1, r);
+}
+
+/* Check that loading and saving a file with // in the incl pattern works.
+ * RHBZ#1031084
+ */
+static void testDoubleSlashPath(CuTest *tc) {
+    int r;
+
+    r = aug_rm(aug, "/augeas/load/*");
+    CuAssertPositive(tc, r);
+
+    r = aug_set(aug, "/augeas/load/Hosts/lens", "Hosts.lns");
+    CuAssertRetSuccess(tc, r);
+    r = aug_set(aug, "/augeas/load/Hosts/incl", "/etc//hosts");
+    CuAssertRetSuccess(tc, r);
+    r = aug_load(aug);
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_match(aug, "/files/etc/hosts/1/alias[ . = 'new']", NULL);
+    CuAssertIntEquals(tc, 0, r);
+
+    r = aug_set(aug, "/files/etc/hosts/1/alias[last() + 1]", "new");
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_save(aug);
+    CuAssertRetSuccess(tc, r);
+    r = aug_match(aug, "/augeas//error", NULL);
+    CuAssertIntEquals(tc, 0, r);
+
+    /* Force reloading the file */
+    r = aug_rm(aug, "/augeas/files//mtime");
+    CuAssertPositive(tc, r);
+
+    r = aug_load(aug);
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_match(aug, "/files/etc/hosts/1/alias[. = 'new']", NULL);
+    CuAssertIntEquals(tc, 1, r);
+}
+
+/* Check the umask is followed when creating files
+ */
+static void testUmask(CuTest *tc, int tumask, mode_t expected_mode) {
+    int r;
+    struct stat buf;
+    char* fpath = NULL;
+
+    if (asprintf(&fpath, "%s/etc/test", root) < 0) {
+        CuFail(tc, "failed to set root");
+    }
+
+    umask(tumask);
+
+    r = aug_rm(aug, "/augeas/load/*");
+    CuAssertPositive(tc, r);
+
+    r = aug_set(aug, "/augeas/load/Test/lens", "Simplelines.lns");
+    CuAssertRetSuccess(tc, r);
+    r = aug_set(aug, "/augeas/load/Test/incl", "/etc/test");
+    CuAssertRetSuccess(tc, r);
+    r = aug_load(aug);
+    CuAssertRetSuccess(tc, r);
+    r = aug_set(aug, "/files/etc/test/1", "test");
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_save(aug);
+    CuAssertRetSuccess(tc, r);
+    r = aug_match(aug, "/augeas//error", NULL);
+    CuAssertIntEquals(tc, 0, r);
+
+    CuAssertIntEquals(tc, 0, stat(fpath, &buf));
+    CuAssertIntEquals(tc, expected_mode, buf.st_mode & 0777);
+}
+static void testUmask077(CuTest *tc) {
+    testUmask(tc, 0077, 0600);
+}
+static void testUmask027(CuTest *tc) {
+    testUmask(tc, 0027, 0640);
+}
+static void testUmask022(CuTest *tc) {
+    testUmask(tc, 0022, 0644);
+}
+
 int main(void) {
     char *output = NULL;
     CuSuite* suite = CuSuiteNew();
@@ -164,9 +315,15 @@ int main(void) {
     CuSuiteSetup(suite, setup, teardown);
 
     SUITE_ADD_TEST(suite, testSaveNewFile);
+    SUITE_ADD_TEST(suite, testRemoveNoPermission);
     SUITE_ADD_TEST(suite, testNonExistentLens);
     SUITE_ADD_TEST(suite, testMultipleXfm);
     SUITE_ADD_TEST(suite, testMtime);
+    SUITE_ADD_TEST(suite, testRelPath);
+    SUITE_ADD_TEST(suite, testDoubleSlashPath);
+    SUITE_ADD_TEST(suite, testUmask077);
+    SUITE_ADD_TEST(suite, testUmask027);
+    SUITE_ADD_TEST(suite, testUmask022);
 
     CuSuiteRun(suite);
     CuSuiteSummary(suite, &output);

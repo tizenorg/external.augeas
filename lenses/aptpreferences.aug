@@ -1,48 +1,69 @@
-(* Apt/preferences module for Augeas          *)
-(* Author: Raphael Pinson <raphink@gmail.com> *)
+(*
+Module: AptPreferences
+  Apt/preferences module for Augeas
+
+Author: Raphael Pinson <raphael.pinson@camptocamp.com>
+*)
 
 module AptPreferences =
-   autoload xfm
+autoload xfm
 
-   (* Define useful primitives *)
-   let colon        = del /:[ \t]*/ ": "
-   let eol          = del /[ \t]*\n/ "\n"
-   let value_to_eol = store /([^ \t\n].*[^ \t\n]|[^ \t\n])/
-   let value_to_spc = store /[^, \t\n]+/
-   let comma = del /,[ \t]*/ ", "
-   let equal = Util.del_str "="
-   let spc   = Util.del_ws_spc
+(************************************************************************
+ * Group: Entries
+ ************************************************************************)
 
-   (* Define empty *)
-   let empty = [ del /[ \t]*\n/ "\n" ]
+(* View: colon *)
+let colon        = del /:[ \t]*/ ": "
 
-   (* Define record *)
+(* View: pin_gen
+     A generic pin
 
-   let simple_entry (kw:string) = [ key kw . colon . value_to_eol . eol ]
+   Parameters:
+     lbl:string - the label *)
+let pin_gen (lbl:string) = store lbl
+                        . [ label lbl . Sep.space . store Rx.no_spaces ]
 
-   let key_value (kw:string)    = [ key kw . equal . value_to_spc ]
-   let pin_keys = key_value "a"
-                | key_value "c"
-                | key_value "l"
-                | key_value "o"
-                | key_value "v"
+(* View: pin_keys *)
+let pin_keys =
+     let space_in = store /[^, \r\t\n][^,\n]*[^, \r\t\n]|[^, \t\n\r]/
+  in Build.key_value /[aclnov]/ Sep.equal space_in
 
-   let pin_options = store /(origin|release)/ . spc . pin_keys . ( comma . pin_keys )*
-   let version_pin = store /version/ . [ label "version" . spc . store /[^ \t\n]+/ ]
+(* View: pin_options *)
+let pin_options =
+    let comma = Util.delim ","
+ in store "release" . Sep.space
+                    . Build.opt_list pin_keys comma
 
-   let pin = [ key "Pin" . colon . (pin_options | version_pin) . eol ]
+(* View: version_pin *)
+let version_pin = pin_gen "version"
 
-   let entries = simple_entry "Explanation"
-               | simple_entry "Package"
-               | simple_entry "Pin-Priority"
-               | pin
+(* View: origin_pin *)
+let origin_pin = pin_gen "origin"
 
-   let record = [ seq "record" . entries+ ]
+(* View: pin *)
+let pin =
+     let pin_value = pin_options | version_pin | origin_pin
+  in Build.key_value_line "Pin" colon pin_value
 
-   (* Define lens *)
-   let lns = (eol* . ( record . eol+ )* . record . eol* ) | eol
+(* View: entries *)
+let entries = Build.key_value_line ("Explanation"|"Package"|"Pin-Priority")
+                                   colon (store Rx.space_in)
+            | pin
+            | Util.comment
 
-   let filter = incl "/etc/apt/preferences"
-              . Util.stdexcl
+(* View: record *)
+let record = [ seq "record" . entries+ ]
 
-   let xfm = transform lns filter
+(************************************************************************
+ * Group: Lens
+ ************************************************************************)
+
+(* View: lns *)
+let lns = Util.empty* . (Build.opt_list record Util.eol+ . Util.empty*)?
+
+(* View: filter *)
+let filter = incl "/etc/apt/preferences"
+           . incl "/etc/apt/preferences.d/*"
+           . Util.stdexcl
+
+let xfm = transform lns filter

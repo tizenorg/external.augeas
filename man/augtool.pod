@@ -46,8 +46,13 @@ root set with the AUGEAS_ROOT environment variable.
 
 Add DIR to the module loadpath. Can be given multiple times. The
 directories set here are searched before any directories specified in the
-AUGEAS_LENS_LIB environment variable, and before the default directory
-F</usr/share/augeas/lenses>.
+AUGEAS_LENS_LIB environment variable, and before the default directories
+F</usr/share/augeas/lenses> and F</usr/share/augeas/lenses/dist>.
+
+=item B<-t>, B<--transform>=I<XFM>
+
+Add a file transform; uses the 'transform' command syntax,
+e.g. C<-t 'Fstab incl /etc/fstab.bak'>.
 
 =item B<-f>, B<--file>=I<FILE>
 
@@ -59,7 +64,7 @@ Read commands from the terminal. When combined with B<-f> or redirection of
 stdin, drop into an interactive session after executing the commands from
 the file.
 
-=item B<-e>
+=item B<-e>, B<--echo>
 
 When reading commands from a file via stdin, echo the commands before
 printing their output.
@@ -87,6 +92,11 @@ creates no entries under C</augeas/load> whatsoever; to read any files,
 they need to be set up manually and loading must be initiated with a
 C<load> command. Using this option gives the fastest startup.
 
+=item B<--span>
+
+Load span positions for nodes in the tree, as they relate to the original
+file. Enables the use of the B<span> command to retrieve position data.
+
 =item B<--version>
 
 Print version information and exit. The version is also in the tree under
@@ -106,11 +116,67 @@ be distinguished by appending C<[N]> to their label to match the N-th
 sibling with such a label. The last sibling with a specific label can be
 reached as C<[last()]>. See L</EXAMPLES> for some examples of this.
 
+=head2 ADMIN COMMANDS
+
+The following commands control the behavior of Augeas and augtool itself.
+
 =over 4
+
+=item B<help>
+
+Print this help text
+
+=item B<load>
+
+Load files according to the transforms in C</augeas/load>.
 
 =item B<quit>
 
 Exit the program
+
+=item B<retrieve> E<lt>LENSE<gt> E<lt>NODE_INE<gt> E<lt>PATHE<gt> E<lt>NODE_OUTE<gt>
+
+Transform tree at PATH back into text using lens LENS and store the
+resulting string at NODE_OUT. Assume that the tree was initially read in
+with the same lens and the string stored at NODE_IN as input.
+
+=item B<save>
+
+Save all pending changes to disk. Unless either the B<-b> or B<-n>
+command line options are given, files are changed in place.
+
+=item B<store> E<lt>LENSE<gt> E<lt>NODEE<gt> E<lt>PATHE<gt>
+
+Parse NODE using LENS and store the resulting tree at PATH.
+
+=item B<transform> E<lt>LENSE<gt> E<lt>FILTERE<gt> E<lt>FILEE<gt>
+
+Add a transform for FILE using LENS. The LENS may be a module name or a
+full lens name.  If a module name is given, then "lns" will be the lens
+assumed.  The FILTER must be either "incl" or "excl".  If the filter is
+"incl",  the FILE will be parsed by the LENS.  If the filter is "excl",
+the FILE will be excluded from the LENS. FILE may contain wildcards.
+
+=back
+
+=head2 READ COMMANDS
+
+The following commands are used to retrieve data from the Augeas tree.
+
+=over 4
+
+=item B<dump-xml> I<[E<lt>PATHE<gt>]>
+
+Print entries in the tree as XML. If PATH is given, printing starts there,
+otherwise the whole tree is printed.
+
+=item B<get> E<lt>PATHE<gt>
+
+Print the value associated with PATH
+
+=item B<label> E<lt>PATHE<gt>
+
+Get and print the label associated with PATH
 
 =item B<ls> E<lt>PATHE<gt>
 
@@ -121,9 +187,47 @@ List the direct children of PATH
 Find all paths that match PATTERN. If VALUE is given, only the matching
 paths whose value equals VALUE are printed
 
-=item B<rm> E<lt>PATHE<gt>
+=item B<print> I<[E<lt>PATHE<gt>]>
 
-Delete PATH and all its children from the tree
+Print entries in the tree. If PATH is given, printing starts there,
+otherwise the whole tree is printed
+
+=item B<span> E<lt>PATHE<gt>
+
+Print the name of the file from which the node PATH was generated, as well
+as information about the positions in the file corresponding to the label,
+the value, and the entire node. PATH must match exactly one node.
+
+You need to run 'set /augeas/span enable' prior to loading files to enable
+recording of span information. It is disabled by default.
+
+=back
+
+=head2 WRITE COMMANDS
+
+The following commands are used to modify the Augeas tree.
+
+=over 4
+
+=item B<clear> E<lt>PATHE<gt>
+
+Set the value for PATH to NULL. If PATH is not in the tree yet, it and all
+its ancestors will be created.
+
+=item B<clearm> E<lt>BASEE<gt> E<lt>SUBE<gt>
+
+Clear multiple nodes values in one operation. Find or create a node matching SUB
+by interpreting SUB as a path expression relative to each node matching
+BASE. If SUB is '.', the nodes matching BASE will be modified.
+
+=item B<ins> I<E<lt>LABELE<gt>> I<E<lt>WHEREE<gt>> I<E<lt>PATHE<gt>>
+
+Insert a new node with label LABEL right before or after PATH into the
+tree. WHERE must be either 'before' or 'after'.
+
+=item B<insert> I<E<lt>LABELE<gt>> I<E<lt>WHEREE<gt>> I<E<lt>PATHE<gt>>
+
+Alias of B<ins>.
 
 =item B<mv> E<lt>SRCE<gt> E<lt>DSTE<gt>
 
@@ -132,44 +236,53 @@ must either match exactly one node in the tree, or may not exist yet. If
 DST exists already, it and all its descendants are deleted. If DST does not
 exist yet, it and all its missing ancestors are created.
 
+=item B<move> E<lt>SRCE<gt> E<lt>DSTE<gt>
+
+Alias of B<mv>.
+
+=item B<cp> E<lt>SRCE<gt> E<lt>DSTE<gt>
+
+Copy node SRC to DST. SRC must match exactly one node in the tree.  DST
+must either match exactly one node in the tree, or may not exist yet. If
+DST exists already, it and all its descendants are deleted. If DST does not
+exist yet, it and all its missing ancestors are created.
+
+=item B<copy> E<lt>SRCE<gt> E<lt>DSTE<gt>
+
+Alias of B<cp>.
+
+=item B<rename> E<lt>SRCE<gt> E<lt>LBLE<gt>
+
+Rename the label of all nodes matching SRC to LBL.
+
+=item B<rm> E<lt>PATHE<gt>
+
+Delete PATH and all its children from the tree
+
 =item B<set> E<lt>PATHE<gt> E<lt>VALUEE<gt>
 
 Associate VALUE with PATH. If PATH is not in the tree yet,
 it and all its ancestors will be created.
 
-=item B<clear> E<lt>PATHE<gt>
+=item B<setm> E<lt>BASEE<gt> E<lt>SUBE<gt> [E<lt>VALUEE<gt>]
 
-Set the value for PATH to NULL. If PATH is not in the tree yet, it and all
-its ancestors will be created.
+Set multiple nodes in one operation.  Find or create a node matching SUB by
+interpreting SUB as a path expression relative to each node matching
+BASE. If SUB is '.', the nodes matching BASE will be modified.
 
-=item B<get> E<lt>PATHE<gt>
+=item B<touch> E<lt>PATHE<gt>
 
-Print the value associated with PATH
+Create PATH with the value NULL if it is not in the tree yet.  All its
+ancestors will also be created.  These new tree entries will appear
+last amongst their siblings.
 
-=item B<print> I<[E<lt>PATHE<gt>]>
+=back
 
-Print entries in the tree. If PATH is given, printing starts there,
-otherwise the whole tree is printed
+=head2 PATH EXPRESSION COMMANDS
 
-=item B<ins> I<E<lt>LABELE<gt>> I<E<lt>WHEREE<gt>> I<E<lt>PATHE<gt>>
+The following commands help when working with path expressions.
 
-Insert a new node with label LABEL right before or after PATH into the
-tree. WHERE must be either 'before' or 'after'.
-
-=item B<save>
-
-Save all pending changes to disk. Unless either the B<-b> or B<-n>
-command line options are given, files are changed in place.
-
-=item B<load>
-
-Load files according to the transforms in C</augeas/load>.
-
-=item B<defvar> E<lt>NAMEE<gt> E<lt>EXPRE<gt>
-
-Define the variable NAME to the result of evaluating EXPR. The variable
-can be used in path expressions as $NAME. Note that EXPR is evaluated when
-the variable is defined, not when it is used.
+=over 4
 
 =item B<defnode> E<lt>NAMEE<gt> E<lt>EXPRE<gt> [E<lt>VALUEE<gt>]
 
@@ -179,9 +292,11 @@ refer to it. If VALUE is given, this is the same as 'set EXPR VALUE'; if
 VALUE is not given, the node is created as if with 'clear EXPR' would and
 NAME refers to that node.
 
-=item B<help>
+=item B<defvar> E<lt>NAMEE<gt> E<lt>EXPRE<gt>
 
-Print this help text
+Define the variable NAME to the result of evaluating EXPR. The variable
+can be used in path expressions as $NAME. Note that EXPR is evaluated when
+the variable is defined, not when it is used.
 
 =back
 
@@ -198,7 +313,8 @@ the B<-r> command line option
 
 Colon separated list of directories with lenses. Directories specified here
 are searched after any directories set with the B<-I> command line option,
-but before the default directory F</usr/share/augeas/lenses>
+but before the default directories F</usr/share/augeas/lenses> and
+F</usr/share/augeas/lenses/dist>
 
 =back
 
@@ -206,6 +322,12 @@ but before the default directory F</usr/share/augeas/lenses>
 
 Normally, exit status is 0. If one or more commands fail, the exit status
 is set to a non-zero value.
+
+Note though that failure to load some of the files specified by transforms
+in C</augeas/load> is not considered a failure. If it is important to know
+that all files were loaded, you need to issue a C<match /augeas//error>
+after loading to find out details about what files could not be loaded and
+why.
 
 =head1 EXAMPLES
 
@@ -228,7 +350,8 @@ is set to a non-zero value.
 
 =head1 FILES
 
-Lenses and schema definitions in F</usr/share/augeas/lenses>
+Lenses and schema definitions in F</usr/share/augeas/lenses> and
+F</usr/share/augeas/lenses/dist>
 
 =head1 AUTHOR
 
@@ -236,7 +359,7 @@ Lenses and schema definitions in F</usr/share/augeas/lenses>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2007, 2008 Red Hat Inc.
+Copyright 2007-2012 Red Hat Inc.
 
 Augeas (and augtool) are distributed under the GNU Lesser General Public
 License (LGPL)

@@ -339,3 +339,68 @@ test Httpd.lns get conf2 =
     {  }
   }
 
+(* Eol comment *)
+test Httpd.lns get "<a> # a comment
+MyDirective Foo
+</a>\n" =
+  { "a"
+    { "#comment" = "a comment" }
+    { "directive" = "MyDirective" { "arg" = "Foo" } } }
+
+test Httpd.lns get "<a>
+# a comment
+</a>\n" =
+  { "a" { "#comment" = "a comment" } }
+
+(* Test: Httpd.lns
+     Newlines inside quoted value (GH issue #104) *)
+test Httpd.lns get "Single 'Foo\\
+bar'
+Double \"Foo\\
+bar\"\n" =
+  { "directive" = "Single"
+    { "arg" = "'Foo\\\nbar'" } }
+  { "directive" = "Double"
+    { "arg" = "\"Foo\\\nbar\"" } }
+
+(* Test: Httpd.lns
+     Support >= in tags (GH #154) *)
+let versioncheck = "
+<IfVersion = 2.1>
+<IfModule !proxy_ajp_module>
+LoadModule proxy_ajp_module modules/mod_proxy_ajp.so
+</IfModule>
+</IfVersion>
+
+<IfVersion >= 2.4>
+<IfModule !proxy_ajp_module>
+LoadModule proxy_ajp_module modules/mod_proxy_ajp.so
+</IfModule>
+</IfVersion>
+"
+
+test Httpd.lns get versioncheck =
+  { }
+  { "IfVersion"
+    { "arg" = "=" }
+    { "arg" = "2.1" }
+    { "IfModule"
+      { "arg" = "!proxy_ajp_module" }
+      { "directive" = "LoadModule"
+        { "arg" = "proxy_ajp_module" }
+        { "arg" = "modules/mod_proxy_ajp.so" }
+      }
+    }
+  }
+  {}
+  { "IfVersion"
+    { "arg" = ">=" }
+    { "arg" = "2.4" }
+    { "IfModule"
+      { "arg" = "!proxy_ajp_module" }
+      { "directive" = "LoadModule"
+        { "arg" = "proxy_ajp_module" }
+        { "arg" = "modules/mod_proxy_ajp.so" }
+      }
+    }
+  }

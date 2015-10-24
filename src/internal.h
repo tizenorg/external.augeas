@@ -1,7 +1,7 @@
 /*
  * internal.h: Useful definitions
  *
- * Copyright (C) 2007-2010 David Lutterkort
+ * Copyright (C) 2007-2011 David Lutterkort
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -65,6 +65,10 @@
  * Information about files */
 #define AUGEAS_META_FILES AUGEAS_META_TREE AUGEAS_FILES_TREE
 
+/* Define: AUGEAS_META_TEXT
+ * Information about text (see aug_text_store and aug_text_retrieve) */
+#define AUGEAS_META_TEXT AUGEAS_META_TREE "/text"
+
 /* Define: AUGEAS_META_ROOT
  * The root directory */
 #define AUGEAS_META_ROOT AUGEAS_META_TREE "/root"
@@ -80,6 +84,10 @@
  * error.  */
 #define AUGEAS_COPY_IF_RENAME_FAILS \
     AUGEAS_META_SAVE_MODE "/copy_if_rename_fails"
+
+/* Define: AUGEAS_CONTEXT
+ * Context prepended to all non-absolute paths */
+#define AUGEAS_CONTEXT AUGEAS_META_TREE "/context"
 
 /* A hierarchy where we record certain 'events', e.g. which tree
  * nodes actually gotsaved into files */
@@ -118,6 +126,9 @@
 /* constants for options in the tree */
 #define AUG_ENABLE "enable"
 #define AUG_DISABLE "disable"
+
+/* default value for the relative path context */
+#define AUG_CONTEXT_DEFAULT "/files"
 
 #ifdef __GNUC__
 
@@ -253,10 +264,14 @@ int pathjoin(char **path, int nseg, ...);
  * Escape nonprintable characters within TEXT, similar to how it's done in
  * C string literals. Caller must free the returned string.
  */
-char *escape(const char *text, int cnt);
+char *escape(const char *text, int cnt, const char *extra);
 
 /* Function: unescape */
-char *unescape(const char *s, int len);
+char *unescape(const char *s, int len, const char *extra);
+
+/* Extra characters to be escaped in strings and regexps respectively */
+#define STR_ESCAPES "\"\\"
+#define RX_ESCAPES  "/\\"
 
 /* Function: print_chars */
 int print_chars(FILE *out, const char *text, int cnt);
@@ -272,6 +287,9 @@ char *format_pos(const char *text, int pos);
  */
 char* xread_file(const char *path);
 
+/* Like xread_file, but caller supplies a file pointer */
+char* xfread_file(FILE *fp);
+
 /* Get the error message for ERRNUM in a threadsafe way. Based on libvirt's
  * virStrError
  */
@@ -285,6 +303,9 @@ int xstrtoint64(char const *s, int base, int64_t *result);
 
 /* Calculate line and column number of character POS in TEXT */
 void calc_line_ofs(const char *text, size_t pos, size_t *line, size_t *ofs);
+
+/* Cleans path from user, removing trailing slashes and whitespace */
+char *cleanpath(char *path);
 
 /* Take the first LEN characters from the regexp *U and expand any
  * character ranges in it. The expanded regexp, if expansion is necessary,
@@ -329,6 +350,10 @@ static inline struct error *err_of_aug(const struct augeas *aug) {
 
 /* Used by augparse for loading tests */
 int __aug_load_module_file(struct augeas *aug, const char *filename);
+
+/* Called at beginning and end of every _public_ API function */
+void api_entry(const struct augeas *aug);
+void api_exit(const struct augeas *aug);
 
 /* Struct: tree
  * An entry in the global config tree. The data structure allows associating
@@ -375,12 +400,11 @@ struct tree *make_tree(char *label, char *value,
  */
 struct tree  *make_tree_origin(struct tree *root);
 
-int tree_replace(struct augeas *aug, const char *path, struct tree *sub);
 /* Make a new tree node and append it to parent's children */
 struct tree *tree_append(struct tree *parent, char *label, char *value);
 
 int tree_rm(struct pathx *p);
-int tree_unlink(struct tree *tree);
+int tree_unlink(struct augeas *aug, struct tree *tree);
 struct tree *tree_set(struct pathx *p, const char *value);
 int tree_insert(struct pathx *p, const char *label, int before);
 int free_tree(struct tree *tree);
@@ -405,6 +429,15 @@ void tree_store_value(struct tree *tree, char **value);
 int tree_set_value(struct tree *tree, const char *value);
 /* Cleanly remove all children of TREE, but leave TREE itself unchanged */
 void tree_unlink_children(struct augeas *aug, struct tree *tree);
+/* Find a node in the tree at path FPATH; FPATH is a file path, i.e.
+ * not interpreted as a path expression. If no such node exists, return NULL
+ */
+struct tree *tree_fpath(struct augeas *aug, const char *fpath);
+/* Find a node in the tree at path FPATH; FPATH is a file path, i.e.
+ * not interpreted as a path expression. If no such node exists, create
+ * it and all its missing ancestors.
+ */
+struct tree *tree_fpath_cr(struct augeas *aug, const char *fpath);
 /* Find the node matching PATH.
  * Returns the node or NULL on error
  * Errors: EMMATCH - more than one node matches PATH
@@ -416,6 +449,12 @@ struct tree *tree_find(struct augeas *aug, const char *path);
  * Returns the node or NULL on error
  */
 struct tree *tree_find_cr(struct augeas *aug, const char *path);
+/* Find the node at the path stored in AUGEAS_CONTEXT, i.e. the root context
+ * node for relative paths.
+ * Errors: EMMATCH - more than one node matches PATH
+ *         ENOMEM  - allocation error
+ */
+struct tree *tree_root_ctx(const struct augeas *aug);
 
 /* Struct: memstream
  * Wrappers to simulate OPEN_MEMSTREAM where that's not available. The
@@ -437,7 +476,8 @@ struct memstream {
  *
  * MS must be allocated in advance; INIT_MEMSTREAM initializes it.
  */
-int init_memstream(struct memstream *ms);
+int __aug_init_memstream(struct memstream *ms);
+#define init_memstream(ms) __aug_init_memstream(ms);
 
 /* Function: close_memstream
  * Close a memstream. After calling this, MS->STREAM can not be used
@@ -446,7 +486,8 @@ int init_memstream(struct memstream *ms);
  *
  * The caller must free the MEMSTREAM structure.
  */
-int close_memstream(struct memstream *ms);
+int __aug_close_memstream(struct memstream *ms);
+#define close_memstream(ms) __aug_close_memstream(ms)
 
 /*
  * Path expressions
@@ -467,9 +508,11 @@ typedef enum {
     PATHX_ETYPE,
     PATHX_ENOVAR,
     PATHX_EEND,
-    PATHX_ENONODES,
+    PATHX_ENOMATCH,
     PATHX_EARITY,
-    PATHX_EREGEXP
+    PATHX_EREGEXP,
+    PATHX_EMMATCH,
+    PATHX_EREGEXPFLAG
 } pathx_errcode_t;
 
 struct pathx;
@@ -478,7 +521,8 @@ struct pathx_symtab;
 const char *pathx_error(struct pathx *pathx, const char **txt, int *pos);
 
 /* Parse a path expression PATH rooted at TREE, which is a node somewhere
- * in AUG->ORIGIN. If TREE is NULL, AUG->ORIGIN is used.
+ * in AUG->ORIGIN. If TREE is NULL, AUG->ORIGIN is used. If ROOT_CTX is not
+ * NULL and the PATH isn't absolute then it will be rooted at ROOT_CTX.
  *
  * Use this function rather than PATHX_PARSE for path expressions inside
  * the tree in AUG->ORIGIN.
@@ -491,6 +535,7 @@ const char *pathx_error(struct pathx *pathx, const char **txt, int *pos);
  */
 struct pathx *pathx_aug_parse(const struct augeas *aug,
                               struct tree *tree,
+                              struct tree *root_ctx,
                               const char *path, bool need_nodeset);
 
 /* Parse the string PATH into a path expression PX that will be evaluated
@@ -506,6 +551,7 @@ int pathx_parse(const struct tree *origin,
                 const char *path,
                 bool need_nodeset,
                 struct pathx_symtab *symtab,
+                struct tree *root_ctx,
                 struct pathx **px);
 /* Return the error struct that was passed into pathx_parse */
 struct error *err_of_pathx(struct pathx *px);

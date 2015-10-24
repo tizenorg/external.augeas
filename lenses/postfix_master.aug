@@ -18,12 +18,16 @@ let ws         = del /[ \t\n]+/ " "
 let comment    = Util.comment
 let empty      = Util.empty
 
-let word       = /[A-Za-z0-9_.-]+/
-let words      = /[A-Za-z0-9$(){}=!_.-][A-Za-z0-9$!(){} ="\/_.-]*[A-Za-z0-9$!(){}="\/_.-]/
+let word       = /[A-Za-z0-9_.:-]+/
+let words      =
+     let char_start = /[A-Za-z0-9$!(){}=_.,:@-]/
+  in let char_end = char_start | /[]["\/]/
+  in let char_middle = char_end | " "
+  in char_start . char_middle* . char_end
 
 let bool       = /y|n|-/
 let integer    = /([0-9]+|-)\??/
-let command   = words . (/\n[ \t]+/ . words)*
+let command   = words . (/[ \t]*\n[ \t]+/ . words)*
 
 let field (l:string) (r:regexp)
                = [ label l . store r ]
@@ -35,7 +39,7 @@ let field (l:string) (r:regexp)
 let entry     = [ key word . ws
                 . field "type"         /inet|unix|fifo|pass/  . ws
                 . field "private"      bool                   . ws
-                . field "unpriviliged" bool                   . ws
+                . field "unprivileged" bool                   . ws
                 . field "chroot"       bool                   . ws
                 . field "wakeup"       integer                . ws
                 . field "limit"        integer                . ws
@@ -49,6 +53,5 @@ let entry     = [ key word . ws
 let lns        = (comment|empty|entry) *
 
 let filter     = incl "/etc/postfix/master.cf"
-               . Util.stdexcl
 
 let xfm        = transform lns filter

@@ -36,21 +36,27 @@ let empty      = Util.empty
 let stanza_id    (t:string) = key t . sep_spc . sto_to_spc
 let stanza_param (l:string) = [ sep_spc . label l . sto_to_spc ]
 
-(* Define reseverved words *)
-let stanza_word = /(iface|auto|allow-[a-z-]+|mapping)/
+(* Define reseverved words and multi-value options*)
+let stanza_word =
+   /(source|iface|auto|allow-[a-z-]+|mapping|bond-slaves|bridge-ports)/
+
+(* Define stanza option indentation *)
+let stanza_indent = del /[ \t]*/ "   "
 
 (* Define additional lines for multi-line stanzas *)
-let stanza_option = [  del /[ \t]*/ "   "
-                     . key  ( /[a-z_-]+/ - stanza_word )
+let stanza_option = [  stanza_indent
+                     . key  ( /[a-z0-9_-]+/ - stanza_word )
                      . sep_spc
                      . sto_to_eol ]
+
+(* Define space-separated array *)
+let array (r:regexp) (t:string) =  del r t . label t . counter t
+   . [ sep_spc . seq t . sto_to_spc ]+
 
 (************************************************************************
  *                              AUTO
  *************************************************************************)
 
-let array (r:regexp) (t:string) =  del r t . label t . counter t
-   . [ sep_spc . seq t . sto_to_spc ]+
 let auto = [ array /(allow-)?auto/ "auto" . eol ]
 
 (************************************************************************
@@ -74,12 +80,24 @@ let mapping = [ stanza_id "mapping"
  *                              IFACE
  *************************************************************************)
 
+let multi_option (t:string) = [ stanza_indent . array t t . eol ]
+
 let iface   = [ Util.indent
               . stanza_id    "iface"
               . stanza_param "family"
               . stanza_param "method"
               . eol
-              . (stanza_option|comment|empty)* ]
+              . ( stanza_option
+                | multi_option "bond-slaves"
+                | multi_option "bridge-ports"
+                | comment
+                | empty )* ]
+
+(************************************************************************
+ *                              SOURCE
+ *************************************************************************)
+
+let source = [ key "source" . sep_spc . sto_to_eol ]
 
 (************************************************************************
  *                              STANZAS
@@ -91,7 +109,7 @@ let iface   = [ Util.indent
    come after an auto or hotplug stanza, otherwise they are considered part
    of a iface or mapping block *)
 
-let stanza_single = (auto|allow) . (comment|empty)*
+let stanza_single = (auto|allow|source) . (comment|empty)*
 let stanza_multi  = iface|mapping
 
 (************************************************************************
@@ -100,7 +118,8 @@ let stanza_multi  = iface|mapping
 
    let lns = (comment|empty)* . (stanza_multi | stanza_single)*
 
-   let filter = incl "/etc/network/interfaces"
-              . Util.stdexcl
+   let filter = (incl "/etc/network/interfaces")
+                . (incl "/etc/network/interfaces.d/*")
+                . Util.stdexcl
 
    let xfm = transform lns filter

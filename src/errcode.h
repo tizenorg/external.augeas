@@ -1,7 +1,7 @@
 /*
  * errcode.h: internal interface for error reporting
  *
- * Copyright (C) 2009-2010 David Lutterkort
+ * Copyright (C) 2009-2011 David Lutterkort
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -35,11 +35,19 @@ struct error {
     int            minor;
     char          *details;       /* Human readable explanation */
     const char    *minor_details; /* Human readable version of MINOR */
+    /* A dummy info of last resort; this can be used in places where
+     * a struct info is needed but none available
+     */
+    struct info   *info;
     /* Bit of a kludge to get at struct augeas, but since struct error
      * is now available in a lot of places (through struct info), this
      * gives a convenient way to get at the overall state
      */
     const struct augeas *aug;
+    /* A preallocated exception so that we can throw something, even
+     * under OOM conditions
+     */
+    struct value *exn;
 };
 
 void report_error(struct error *err, aug_errcode_t errcode,
@@ -73,6 +81,14 @@ void reset_error(struct error *err);
             report_error((obj)->error, code, ## fmt);   \
             goto error;                                 \
         }                                               \
+    } while(0)
+
+#define ARG_CHECK(cond, obj, fmt ...)                           \
+    do {                                                        \
+        if (cond) {                                             \
+            report_error((obj)->error, AUG_EBADARG, ## fmt);    \
+            goto error;                                         \
+        }                                                       \
     } while(0)
 
 /* A variant of assert that uses our error reporting infrastructure

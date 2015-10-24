@@ -7,7 +7,7 @@ Author:
     Ivana Hutarova Varekova <varekova@redhat.com>
 
 About: Licence
-    This file is licensed under the LGPLv2+, like the rest of Augeas.
+    This file is licensed under the LGPL v2+, like the rest of Augeas.
 
 About: Lens Usage
     Sample usage of this lens in augtool:
@@ -39,7 +39,7 @@ module Cgrules =
 
 (* Group: Generic primitive definitions *)
 (* Variable: name *)
-   let name       = /[^@%\# \t\n][^ \t\n]*/
+   let name       = /[^@%# \t\n][^ \t\n]*/
 (* Variable: ctrl_key *)
    let ctrl_key   = /[^ \t\n\/]+/
 (* Variable: ctrl_value *)

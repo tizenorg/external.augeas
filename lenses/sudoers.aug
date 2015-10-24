@@ -21,7 +21,7 @@ The definitions from `man sudoers` are put as commentaries for reference
 throughout the file. More information can be found in the manual.
 
 About: License
-  This file is licensed under the LGPLv2+, like the rest of Augeas.
+  This file is licensed under the LGPL v2+, like the rest of Augeas.
 
 
 About: Lens Usage
@@ -49,31 +49,35 @@ module Sudoers =
 
 (* Group: Generic primitives *)
 (* Variable: eol *)
-let eol       = del /[ \t]*\n/ "\n"
+let eol       = Util.eol
 
 (* Variable: indent *)
-let indent    = del /[ \t]*/ ""
+let indent    = Util.indent
 
 
 (* Group: Separators *)
 
 (* Variable: sep_spc *)
-let sep_spc  = del /[ \t]+/ " "
+let sep_spc  = Sep.space
 
 (* Variable: sep_cont *)
-let sep_cont = del /([ \t]+|[ \t]*\\\\\n[ \t]*)/ " "
+let sep_cont = Sep.cl_or_space
 
 (* Variable: sep_cont_opt *)
-let sep_cont_opt = del /([ \t]*|[ \t]*\\\\\n[ \t]*)/ " "
+let sep_cont_opt = Sep.cl_or_opt_space
+
+(* Variable: sep_cont_opt_build *)
+let sep_cont_opt_build (sep:string) =
+   del (Rx.cl_or_opt_space . sep . Rx.cl_or_opt_space) (" " . sep . " ")
 
 (* Variable: sep_com *)
-let sep_com  = sep_cont_opt . Util.del_str "," . sep_cont_opt
+let sep_com = sep_cont_opt_build ","
 
 (* Variable: sep_eq *)
-let sep_eq   = sep_cont_opt . Util.del_str "=" . sep_cont_opt
+let sep_eq   = sep_cont_opt_build "="
 
 (* Variable: sep_col *)
-let sep_col  = sep_cont_opt . Util.del_str ":" . sep_cont_opt
+let sep_col  = sep_cont_opt_build ":"
 
 (* Variable: sep_dquote *)
 let sep_dquote   = Util.del_str "\""
@@ -83,33 +87,48 @@ let sep_dquote   = Util.del_str "\""
 
 (* Variable: sto_to_com_cmnd
 sto_to_com_cmnd does not begin or end with a space *)
-let sto_to_com_cmnd = store /([^,=:#() \t\n\\\\]([^,=:#()\n\\\\]|\\\\[=:,\\\\])*[^,=:#() \t\n\\\\])|[^,=:#() \t\n\\\\]/
+let sto_to_com_cmnd =
+      let alias = Rx.word - /(NO)?(PASSWD|EXEC|SETENV)/
+   in let non_alias = /(!?[\/a-z]([^,:#()\n\\]|\\\\[=:,\\])*[^,=:#() \t\n\\])|[^,=:#() \t\n\\]/
+   in store (alias | non_alias)
 
 (* Variable: sto_to_com
 
 There could be a \ in the middle of a command *)
-let sto_to_com      = store /([^,=:#() \t\n\\\\][^,=:#()\n]*[^,=:#() \t\n\\\\])|[^,=:#() \t\n\\\\]/
+let sto_to_com      = store /([^,=:#() \t\n\\][^,=:#()\n]*[^,=:#() \t\n\\])|[^,=:#() \t\n\\]/
 
 (* Variable: sto_to_com_host *)
-let sto_to_com_host = store /[^,=:#() \t\n\\\\]+/
+let sto_to_com_host = store /[^,=:#() \t\n\\]+/
 
 
 (* Variable: sto_to_com_user
-Escaped spaces are allowed *)
-let sto_to_com_user = store ( /([^,=:#() \t\n]([^,=:#() \t\n]|(\\\\[ \t]))*[^,=:#() \t\n])|[^,=:#() \t\n]/
-                              - /(User|Runas|Host|Cmnd)_Alias|Defaults.*/ )
+Escaped spaces and NIS domains and allowed*)
+let sto_to_com_user =
+      let nis_re = /([A-Z]([-A-Z0-9]|(\\\\[ \t]))*+\\\\\\\\)/
+   in let user_re = /[%+@a-z]([-A-Za-z0-9._]|(\\\\[ \t]))*/
+   in let alias_re = /[A-Z_]+/
+   in store ((nis_re? . user_re) | alias_re)
+
+(* Variable: to_com_chars *)
+let to_com_chars        = /[^",=#() \t\n\\]+/ (* " relax emacs *)
+
+(* Variable: to_com_dquot *)
+let to_com_dquot        = /"[^",=#()\n\\]+"/ (* " relax emacs *)
+
+(* Variable: sto_to_com_dquot *)
+let sto_to_com_dquot    = store (to_com_chars|to_com_dquot)
 
 (* Variable: sto_to_com_col *)
-let sto_to_com_col      = store /[^",=#() \t\n\\\\]+/ (* " relax emacs *)
+let sto_to_com_col      = store to_com_chars
 
 (* Variable: sto_to_eq *)
-let sto_to_eq  = store /[^,=:#() \t\n\\\\]+/
+let sto_to_eq  = store /[^,=:#() \t\n\\]+/
 
 (* Variable: sto_to_spc *)
-let sto_to_spc = store /[^", \t\n\\\\]+|"[^", \t\n\\\\]+"/
+let sto_to_spc = store /[^", \t\n\\]+|"[^", \t\n\\]+"/
 
 (* Variable: sto_to_spc_no_dquote *)
-let sto_to_spc_no_dquote = store /[^", \t\n\\\\]+/ (* " relax emacs *)
+let sto_to_spc_no_dquote = store /[^",# \t\n\\]+/ (* " relax emacs *)
 
 (* Variable: sto_integer *)
 let sto_integer = store /[0-9]+/
@@ -122,6 +141,14 @@ Map comments in "#comment" nodes *)
 let comment =
   let sto_to_eol = store (/([^ \t\n].*[^ \t\n]|[^ \t\n])/ - /include(dir)?.*/) in
   [ label "#comment" . del /[ \t]*#[ \t]*/ "# " . sto_to_eol . eol ]
+
+(* View: comment_eol
+Requires a space before the # *)
+let comment_eol = Util.comment_generic /[ \t]+#[ \t]*/ " # "
+
+(* View: comment_or_eol
+A <comment_eol> or <eol> *)
+let comment_or_eol = comment_eol | (del /([ \t]+#\n|[ \t]*\n)/ "\n")
 
 (* View: empty
 Map empty lines *)
@@ -155,7 +182,7 @@ let alias_field (kw:string) (sto:lens) = [ label kw . sto ]
 (* View: alias_list
      List of <alias_fields>, separated by commas *)
 let alias_list  (kw:string) (sto:lens) =
-  alias_field kw sto . ( sep_com . alias_field kw sto )*
+  Build.opt_list (alias_field kw sto) sep_com
 
 (************************************************************************
  * View: alias_name
@@ -195,7 +222,7 @@ let alias_entry_single (field:string) (sto:lens)
  *************************************************************************)
 let alias_entry (kw:string) (field:string) (sto:lens)
     = [ indent . key kw . sep_cont . alias_entry_single field sto
-          . ( sep_col . alias_entry_single field sto )* . eol ]
+          . ( sep_col . alias_entry_single field sto )* . comment_or_eol ]
 
 (* TODO: go further in user definitions *)
 (* View: user_alias
@@ -236,10 +263,11 @@ let alias = user_alias | runas_alias | host_alias | cmnd_alias
  *     > Default_Type ::= 'Defaults' |
  *     >                  'Defaults' '@' Host_List |
  *     >                  'Defaults' ':' User_List |
+ *     >                  'Defaults' '!' Cmnd_List |
  *     >                  'Defaults' '>' Runas_List
  *************************************************************************)
 let default_type     =
-  let value = store /[@:>][^ \t\n\\\\]+/ in
+  let value = store /[@:!>][^ \t\n\\]+/ in
   [ label "type" . value ]
 
 (************************************************************************
@@ -276,7 +304,10 @@ let parameter_flag_kw    = "always_set_home" | "authenticate" | "env_editor"
                          | "requiretty" | "root_sudo" | "rootpw" | "runaspw"
                          | "set_home" | "set_logname" | "setenv"
                          | "shell_noargs" | "stay_setuid" | "targetpw"
-                         | "tty_tickets" | "visiblepw"
+                         | "tty_tickets" | "visiblepw" | "closefrom_override"
+                         | "closefrom_override" | "compress_io" | "fast_glob"
+                         | "log_input" | "log_output" | "pwfeedback"
+                         | "umask_override" | "use_pty"
 
 let parameter_flag       = [ del_negate . negate_node?
                                . key parameter_flag_kw ]
@@ -316,20 +347,17 @@ let parameter_string_nobool_kw = "badpass_message" | "editor" | "mailsub"
                                | "timestampdir" | "timestampowner" | "secure_path"
 
 let parameter_string_nobool    = [ key parameter_string_nobool_kw . sep_eq
-                                     . del /"?/ "" . sto_to_com_col
-                                     . del /"?/ "" ]
+                                     . sto_to_com_dquot ]
 
 let parameter_string_bool_kw   = "exempt_group" | "lecture" | "lecture_file"
                                | "listpw" | "logfile" | "mailerflags"
-                               | "mailerpath" | "mailto" | "exempt_group"
-                               | "syslog" | "verifypw" | "logfile"
-                               | "mailerflags" | "mailerpath" | "mailto"
+                               | "mailerpath" | "mailto" | "mailfrom" 
                                | "syslog" | "verifypw"
 
 let parameter_string_bool      =
   negate_or_value
     (key parameter_string_bool_kw)
-    (sep_eq . sto_to_com_col)
+    (sep_eq . sto_to_com_dquot)
 
 let parameter_string           = parameter_string_nobool
                                | parameter_string_bool
@@ -401,7 +429,7 @@ let parameter_list   = parameter . ( sep_com . parameter )*
  *     > Default_Entry ::= Default_Type Parameter_List
  *************************************************************************)
 let defaults = [ indent . key "Defaults" . default_type? . sep_cont
-                   . parameter_list . eol ]
+                   . parameter_list . comment_or_eol ]
 
 
 
@@ -411,13 +439,25 @@ let defaults = [ indent . key "Defaults" . default_type? . sep_cont
 
 (************************************************************************
  * View: runas_spec
- *   A runas specification for <spec>, using <alias_list>
+ *   A runas specification for <spec>, using <alias_list> for listing
+ *   users and/or groups used to run a command
  *
  *   Definition:
- *     > Runas_Spec ::= '(' Runas_List ')'
+ *     > Runas_Spec ::= '(' Runas_List ')' |
+ *     >                '(:' Runas_List ')' |
+ *     >                '(' Runas_List ':' Runas_List ')'
  *************************************************************************)
-let runas_spec = Util.del_str "(" . alias_list "runas_user" sto_to_com
-    . Util.del_str ")" . sep_cont_opt
+let runas_spec_user       = alias_list "runas_user" sto_to_com
+let runas_spec_group      = Util.del_str ":" . indent
+                            . alias_list "runas_group" sto_to_com
+
+let runas_spec_usergroup  = runas_spec_user . indent . runas_spec_group
+
+let runas_spec = Util.del_str "("
+                 . (runas_spec_user
+                    | runas_spec_group
+                    | runas_spec_usergroup )
+                 . Util.del_str ")" . sep_cont_opt
 
 (************************************************************************
  * View: tag_spec
@@ -449,7 +489,7 @@ let cmnd_spec  =
  *     > Cmnd_Spec_List ::= Cmnd_Spec |
  *     >                    Cmnd_Spec ',' Cmnd_Spec_List
  *************************************************************************)
-let cmnd_spec_list = cmnd_spec . ( sep_com . cmnd_spec )*
+let cmnd_spec_list = Build.opt_list cmnd_spec sep_com
 
 
 (************************************************************************
@@ -469,8 +509,8 @@ let spec_list = [ label "host_group" . alias_list "host" sto_to_com_host
  *************************************************************************)
 let spec = [ label "spec" . indent
                . alias_list "user" sto_to_com_user . sep_cont
-               . spec_list
-               . ( sep_col . spec_list )* . eol ]
+               . Build.opt_list spec_list sep_col
+               . comment_or_eol ]
 
 
 (************************************************************************
@@ -493,6 +533,8 @@ let filter = (incl "/etc/sudoers")
     . (incl "/usr/local/etc/sudoers")
     . (incl "/etc/sudoers.d/*")
     . (incl "/usr/local/etc/sudoers.d/*")
+    . (incl "/opt/csw/etc/sudoers")
+    . (incl "/etc/opt/csw/sudoers")
     . Util.stdexcl
 
 let xfm = transform lns filter

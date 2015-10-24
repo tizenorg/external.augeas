@@ -16,7 +16,9 @@
 # results listed in the test
 #
 # The test framework sets up variables:
-#   hosts   /files/etc/hosts/*
+#   hosts      /files/etc/hosts/*
+#   localhost  '127.0.0.1'
+#   php        /files/etc/php.ini
 
 # Very simple to warm up
 test wildcard /files/etc/hosts/*/ipaddr
@@ -224,6 +226,44 @@ test regexp1 /files/etc/sysconfig/network-scripts/*[label() =~ regexp('.*-eth0')
 test regexp2 /files/etc/hosts/*[* =~ regexp('127\..*')]
      /files/etc/hosts/1
 
+test regexp3 /files/etc/hosts/*[ipaddr =~ regexp(/files/etc/hosts/*/ipaddr)]
+     /files/etc/hosts/1
+     /files/etc/hosts/2
+
+# Check that we don't crash when the nodeset contains all NULL's
+test regexp4 /files/etc/hosts/*[ipaddr =~ regexp(/files/etc/hosts/*[ipaddr])]
+
+# Check case-insensitive matches
+test regexp5 /files/etc/sysconfig/network-scripts/*[label() =~ regexp('.*-ETH0', 'i')]
+     /files/etc/sysconfig/network-scripts/ifcfg-eth0
+
+test regexp6 /files/etc/hosts/*[ipaddr =~ regexp(/files/etc/hosts/*/ipaddr, 'i')]
+     /files/etc/hosts/1
+     /files/etc/hosts/2
+
+test glob1 /files[ 'axxa' =~ glob('a*a') ]
+     /files
+
+test glob2 /files[ 'axxa' =~ glob('a?[a-z]a') ]
+     /files
+
+test glob3 /files[ '^a' =~ glob('^a') ]
+     /files
+
+test glob4 /augeas/load/*[ '/etc/hosts' =~ glob(incl) ]
+     /augeas/load/Hosts
+
+test glob5 /files[ '/files/etc/hosts/1' =~ glob('/files/*/1') ]
+
+test glob6 /files[ '/files/etc/hosts/1' =~ glob('/files/*/*/1') ]
+     /files
+
+test glob_nomatch /files/etc/hosts/*[ipaddr][ ipaddr !~ glob(/files/etc/hosts/*/ipaddr[1]) ]
+    /files/etc/hosts/2
+
+test glob_for_lens /augeas/load/*[ '/etc/hosts/1/ipaddr' =~ glob(incl) + regexp('/.*') ]/lens
+     /augeas/load/Hosts/lens = @Hosts
+
 # Union of nodesets
 test union (/files/etc/yum.conf | /files/etc/yum.repos.d/*)/*/gpgcheck
      /files/etc/yum.conf/main/gpgcheck = 1
@@ -235,3 +275,43 @@ test union (/files/etc/yum.conf | /files/etc/yum.repos.d/*)/*/gpgcheck
      /files/etc/yum.repos.d/fedora.repo/fedora-source/gpgcheck = 1
      /files/etc/yum.repos.d/remi.repo/remi/gpgcheck = 1
      /files/etc/yum.repos.d/remi.repo/remi-test/gpgcheck = 1
+
+# Paths with whitespace in them
+test php1 $php/mail function
+     /files/etc/php.ini/mail function
+
+test php2 $php[mail function]
+     /files/etc/php.ini
+
+test php3 $php[count(mail function) = 1]
+     /files/etc/php.ini
+
+test php4 $php/mail function/SMTP
+     /files/etc/php.ini/mail function/SMTP = localhost
+
+test php5 $php/mail\ function
+     /files/etc/php.ini/mail function
+
+test expr-or /files/etc/group/root/*[self::gid or self::user]
+     /files/etc/group/root/gid = 0
+     /files/etc/group/root/user = root
+
+test int-ns-eq /files/etc/group/*[int(gid) = 30]
+     /files/etc/group/gopher
+
+test int-ns-lt /files/etc/group/*[int(gid) < 3]
+    /files/etc/group/root
+    /files/etc/group/bin
+    /files/etc/group/daemon
+
+test int-bool-f /files[int(1 = 0) > 0]
+
+test int-bool-t /files[int(1 = 1) > 0]
+     /files
+
+# Relative paths, relying on default /files context
+test ctx_file etc/network/interfaces
+     /files/etc/network/interfaces
+
+test ctx_file_pred etc/network/interfaces/iface[. = "lo"]
+     /files/etc/network/interfaces/iface[1] = lo

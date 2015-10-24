@@ -135,10 +135,10 @@ let option = [ indent . del /[oO]ption/ "Option" . label "Option" . sep_spc
 (* View: screen
  * The Screen entry of ServerLayout
  *)
-let screen = [ indent . del /[sS]creen/ "Screen" . label "Screen" . sep_spc
-               . [ label "num" . store int . sep_spc ]?
-               . quoted_string_val
-               . [ sep_spc . label "position" . store to_eol ]?
+let screen = [ indent . del /[sS]creen/ "Screen" . label "Screen"
+               . [ sep_spc . label "num" . store int ]?
+               . ( sep_spc . quoted_string_val
+               . [ sep_spc . label "position" . store to_eol ]? )?
                . eol ]
 
 (* View: input_device *)
@@ -209,6 +209,19 @@ let display = [ indent . del "SubSection" "SubSection" . sep_spc
                        . display_entry*
                        . indent . del "EndSubSection" "EndSubSection" . eol ]
 
+(************************************************************************
+ * Group:                          EXTMOD SUBSECTION
+ *************************************************************************)
+
+let extmod_entry =  entry_str "Option"  /[oO]ption/ |
+                    empty |
+                    comment
+
+let extmod = [ indent . del "SubSection" "SubSection" . sep_spc
+                       . sep_dquote . key "extmod" . sep_dquote
+                       . eol
+                       . extmod_entry*
+                       . indent . del "EndSubSection" "EndSubSection" . eol ]
 
 (************************************************************************
  * Group:                       SECTIONS
@@ -225,7 +238,9 @@ let display = [ indent . del "SubSection" "SubSection" . sep_spc
  *     >   Files          File pathnames
  *     >   ServerFlags    Server flags
  *     >   Module         Dynamic module loading
+ *     >   Extensions     Extension Enabling
  *     >   InputDevice    Input device description
+ *     >   InputClass     Input Class description
  *     >   Device         Graphics device description
  *     >   VideoAdaptor   Xv video adaptor description
  *     >   Monitor        Monitor description
@@ -235,7 +250,7 @@ let display = [ indent . del "SubSection" "SubSection" . sep_spc
  *     >   DRI            DRI-specific configuration
  *     >   Vendor         Vendor-specific configuration
  *************************************************************************)
-let section_re = /(Extensions|Files|ServerFlags|Module|InputDevice|Device|VideoAdaptor|Monitor|Modes|Screen|ServerLayout|DRI|Vendor)/
+let section_re = /(Extensions|Files|ServerFlags|Module|InputDevice|InputClass|Device|VideoAdaptor|Monitor|Modes|Screen|ServerLayout|DRI|Vendor)/
 
 
 (************************************************************************
@@ -254,6 +269,7 @@ let section_re_obsolete = /(Keyboard|Pointer)/
 let section_entry = option |
                     screen |
                     display |
+                    extmod |
                     input_device |
                     driver |
                     identifier |
@@ -288,6 +304,8 @@ let lns = ( empty | comment | section )*
 
 
 (* Variable: filter *)
-let filter = (incl "/etc/X11/xorg.conf")
+let filter = incl "/etc/X11/xorg.conf"
+           . incl "/etc/X11/xorg.conf.d/*.conf"
+           . Util.stdexcl
 
 let xfm = transform lns filter

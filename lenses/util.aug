@@ -54,6 +54,14 @@ Variable: eol
   let eol = del /[ \t]*\n/ "\n"
 
 (*
+Variable: doseol
+  Delete end of line with optional carriage return,
+  including optional trailing whitespace
+*)
+  let doseol = del /[ \t]*\r?\n/ "\n"
+   
+
+(*
 Variable: indent
   Delete indentation, including leading whitespace
 *)
@@ -64,19 +72,33 @@ Variable: indent
      It allows indentation for comments, removes the leading and trailing spaces
      of comments and stores them in nodes, except for empty comments which are
      ignored together with empty lines
+*)
 
-View: comment_generic
+
+(* View: comment_generic_seteol
+  Map comments and set default comment sign
+*)
+
+  let comment_generic_seteol (r:regexp) (d:string) (eol:lens) =
+    [ label "#comment" . del r d
+        . store /([^ \t\r\n].*[^ \t\r\n]|[^ \t\r\n])/ . eol ]
+
+(* View: comment_generic
   Map comments and set default comment sign
 *)
 
   let comment_generic (r:regexp) (d:string) =
-    [ label "#comment" . del r d
-        . store /([^ \t\n].*[^ \t\n]|[^ \t\n])/ . eol ]
+    comment_generic_seteol r d doseol
 
 (* View: comment
   Map comments into "#comment" nodes
 *)
   let comment = comment_generic /[ \t]*#[ \t]*/ "# "
+
+(* View: comment_noindent
+  Map comments into "#comment" nodes, without indentation
+*)
+  let comment_noindent = comment_generic /#[ \t]*/ "# "
 
 (* View: comment_eol
   Map eol comments into "#comment" nodes
@@ -85,19 +107,20 @@ View: comment_generic
   let comment_eol = comment_generic /[ \t]*#[ \t]*/ " # "
 
 (* View: comment_or_eol
-    A <comment_eol> or <eol> *)
- let comment_or_eol = comment_eol | (del /[ \t]*#?\n/ "\n")
+    A <comment_eol> or <eol>, with an optional empty comment *)
+ let comment_or_eol = comment_eol | (del /[ \t]*(#[ \t]*)?\n/ "\n")
 
 (* View: comment_multiline
     A C-style multiline comment *)
   let comment_multiline =
-     let mline_re = (/[^ \t\n].*[^ \t\n]|[^ \t\n]/ - /.*\*\/.*/) in
+     let mline_re = (/[^ \t\r\n].*[^ \t\r\n]|[^ \t\r\n]/ - /.*\*\/.*/) in
      let mline = [ seq "mline"
+                 . del /[ \t\r\n]*/ "\n"
                  . store mline_re ] in
-     [ label "#mcomment" . del /[ \t]*\/\*[ \t\n]*/ "/*\n"
+     [ label "#mcomment" . del /[ \t]*\/\*/ "/*"
        . counter "mline"
-       . (mline . (eol . mline)*)
-       . del /[ \t\n]*\*\/[ \t]*\n/ "\n*/\n" ]
+       . mline . (eol . mline)*
+       . del /[ \t\r\n]*\*\/[ \t]*\r?\n/ "\n*/\n" ]
 
 (* View: comment_c_style
     A comment line, C-style *)
@@ -110,14 +133,27 @@ View: comment_generic
   let empty_generic (r:regexp) =
     [ del r "" . del_str "\n" ]
 
+(* Variable: empty_generic_re *)
+  let empty_generic_re = /[ \t]*#?[ \t]*/
+
 (* View: empty
   Map empty lines, including empty comments *)
-  let empty = empty_generic /[ \t]*#?[ \t]*/
+  let empty = empty_generic empty_generic_re
 
 (* View: empty_c_style
   Map empty lines, including C-style empty comment *)
   let empty_c_style =
     empty_generic /[ \t]*((\/\/)|(\/\*[ \t]*\*\/))?[ \t]*/
+
+(* View: empty_generic_dos
+  A generic definition of <empty> with dos newlines
+  Map empty lines, including empty comments *)
+  let empty_generic_dos (r:regexp) =
+    [ del r "" . del /\r?\n/ "\n" ]
+
+(* View: empty_dos *)
+  let empty_dos =
+    empty_generic_dos /[ \t]*#?[ \t]*/
 
 
 (* View: Split *)
@@ -127,6 +163,10 @@ View: comment_generic
   let split (elt:lens) (sep:lens) =
     let sym = gensym "split" in
     counter sym . ( [ seq sym . sep . elt ] ) *
+
+(* View: delim *)
+  let delim (op:string) = del (/[ \t]*/ . op . /[ \t]*/)
+                              (" " . op . " ")
 
 (* Group: Exclusions
 
@@ -141,8 +181,7 @@ Variable: stdexcl
     (excl "*.dpkg-bak") .
     (excl "*.dpkg-dist") .
     (excl "*.augsave") .
-    (excl "*.augnew")
-
-(* Local Variables: *)
-(* mode: caml       *)
-(* End:             *)
+    (excl "*.augnew") .
+    (excl "*.bak") .
+    (excl "*.old") .
+    (excl "#*#")

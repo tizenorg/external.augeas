@@ -1,7 +1,7 @@
 /*
  * test-xpath.c: check that XPath expressions yield the expected result
  *
- * Copyright (C) 2007 Red Hat Inc.
+ * Copyright (C) 2007-2011 Red Hat Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -29,6 +29,8 @@
 #include <augeas.h>
 #include <internal.h>
 #include <memory.h>
+
+#include "cutest.h"
 
 static const char *abs_top_srcdir;
 static char *root;
@@ -78,6 +80,19 @@ static char *token_to_eol(char *s, char **tok) {
     return s;
 }
 
+static char *findpath(char *s, char **p) {
+    char *t = skipws(s);
+
+    while (*s && *s != '=') s++;
+    if (s > t) {
+        s -= 1;
+        while (*s && isspace(*s)) s -= 1;
+        s += 1;
+    }
+    *p = strndup(t, s - t);
+    return s;
+}
+
 static struct test *read_tests(void) {
     char *fname;
     FILE *fp;
@@ -107,7 +122,7 @@ static struct test *read_tests(void) {
             if (ALLOC(e) < 0)
                 die("out of memory");
             list_append(t->entries, e);
-            s = token(s, &(e->path));
+            s = findpath(s, &(e->path));
             s = skipws(s);
             if (*s) {
                 if (*s != '=') {
@@ -301,7 +316,22 @@ static int test_invalid_regexp(struct augeas *aug) {
     return -1;
 }
 
-static int run_tests(struct test *tests) {
+static int test_wrong_regexp_flag(struct augeas *aug) {
+    int r;
+
+    printf("%-30s ... ", "wrong_regexp_flag");
+    r = aug_match(aug, "/files/*[ * =~ regexp('abc', 'o')]", NULL);
+    if (r >= 0)
+        goto fail;
+
+    printf("PASS\n");
+    return 0;
+ fail:
+    printf("FAIL\n");
+    return -1;
+}
+
+static int run_tests(struct test *tests, int argc, char **argv) {
     char *lensdir;
     struct augeas *aug = NULL;
     int r, result = EXIT_SUCCESS;
@@ -318,30 +348,39 @@ static int run_tests(struct test *tests) {
     r = aug_defvar(aug, "localhost", "'127.0.0.1'");
     if (r != 0)
         die("aug_defvar $localhost");
+    r = aug_defvar(aug, "php", "/files/etc/php.ini");
+    if (r != 1)
+        die("aug_defvar $php");
 
     list_for_each(t, tests) {
+        if (! should_run(t->name, argc, argv))
+            continue;
         if (run_one_test(aug, t) < 0)
             result = EXIT_FAILURE;
     }
 
-    if (test_rm_var(aug) < 0)
-        result = EXIT_FAILURE;
+    if (argc == 0) {
+        if (test_rm_var(aug) < 0)
+            result = EXIT_FAILURE;
 
-    if (test_defvar_nonexistent(aug) < 0)
-        result = EXIT_FAILURE;
+        if (test_defvar_nonexistent(aug) < 0)
+            result = EXIT_FAILURE;
 
-    if (test_defnode_nonexistent(aug) < 0)
-        result = EXIT_FAILURE;
+        if (test_defnode_nonexistent(aug) < 0)
+            result = EXIT_FAILURE;
 
-    if (test_invalid_regexp(aug) < 0)
-        result = EXIT_FAILURE;
+        if (test_invalid_regexp(aug) < 0)
+            result = EXIT_FAILURE;
 
+        if (test_wrong_regexp_flag(aug) < 0)
+            result = EXIT_FAILURE;
+    }
     aug_close(aug);
 
     return result;
 }
 
-int main(void) {
+int main(int argc, char **argv) {
     struct test *tests;
 
     abs_top_srcdir = getenv("abs_top_srcdir");
@@ -353,7 +392,7 @@ int main(void) {
     }
 
     tests = read_tests();
-    return run_tests(tests);
+    return run_tests(tests, argc - 1, argv + 1);
     /*
     list_for_each(t, tests) {
         printf("Test %s\n", t->name);

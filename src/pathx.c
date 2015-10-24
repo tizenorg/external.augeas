@@ -1,7 +1,7 @@
 /*
  * pathx.c: handling path expressions
  *
- * Copyright (C) 2007-2010 David Lutterkort
+ * Copyright (C) 2007-2011 David Lutterkort
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -42,13 +42,15 @@ static const char *const errcodes[] = {
     "unmatched '['",
     "unmatched '('",
     "expected a '/'",
-    "internal error",   /* PATHX_EINTERNAL */
-    "type error",       /* PATHX_ETYPE */
-    "undefined variable",               /* PATHX_ENOVAR */
-    "garbage at end of path expression",/* PATHX_EEND */
-    "can not expand tree from empty nodeset",  /* PATHX_ENONODES */
+    "internal error",                             /* PATHX_EINTERNAL */
+    "type error",                                 /* PATHX_ETYPE */
+    "undefined variable",                         /* PATHX_ENOVAR */
+    "garbage at end of path expression",          /* PATHX_EEND */
+    "no match for path expression",               /* PATHX_ENOMATCH */
     "wrong number of arguments in function call", /* PATHX_EARITY */
-    "invalid regular expression"        /* PATHX_EREGEXP */
+    "invalid regular expression",                 /* PATHX_EREGEXP */
+    "too many matches",                           /* PATHX_EMMATCH */
+    "wrong flag for regexp"                       /* PATHX_EREGEXPFLAG */
 };
 
 /*
@@ -85,6 +87,7 @@ enum binary_op {
     OP_AND,        /* 'and' */
     OP_OR,         /* 'or' */
     OP_RE_MATCH,   /* '=~' */
+    OP_RE_NOMATCH, /* '!~' */
     OP_UNION       /* '|' */
 };
 
@@ -132,6 +135,9 @@ struct step {
     struct pred *predicates;
 };
 
+/* Initialise the root nodeset with the first step */
+static struct tree *step_root(struct step *step, struct tree *ctx,
+                              struct tree *root_ctx);
 /* Iteration over the nodes on a step, ignoring the predicates */
 static struct tree *step_first(struct step *step, struct tree *ctx);
 static struct tree *step_next(struct step *step, struct tree *ctx,
@@ -194,7 +200,7 @@ struct expr {
         char            *ident;        /* E_VAR */
         struct {                       /* E_APP */
             const struct func *func;
-            struct expr       *args[];
+            struct expr       **args;
         };
     };
 };
@@ -218,6 +224,8 @@ struct state {
     struct tree *ctx; /* The current node */
     uint            ctx_pos;
     uint            ctx_len;
+
+    struct tree *root_ctx; /* Root context for relative paths */
 
     /* A table of all values. The table is dynamically reallocated, i.e.
      * pointers to struct value should not be used across calls that
@@ -261,7 +269,7 @@ static inline int streqx(const char *s1, const char *s2) {
 
 /* Functions */
 
-typedef void (*func_impl_t)(struct state *state);
+typedef void (*func_impl_t)(struct state *state, int nargs);
 
 struct func {
     const char      *name;
@@ -271,14 +279,20 @@ struct func {
     func_impl_t      impl;
 };
 
-static void func_last(struct state *state);
-static void func_position(struct state *state);
-static void func_count(struct state *state);
-static void func_label(struct state *state);
-static void func_regexp(struct state *state);
+static void func_last(struct state *state, int nargs);
+static void func_position(struct state *state, int nargs);
+static void func_count(struct state *state, int nargs);
+static void func_label(struct state *state, int nargs);
+static void func_regexp(struct state *state, int nargs);
+static void func_regexp_flag(struct state *state, int nargs);
+static void func_glob(struct state *state, int nargs);
+static void func_int(struct state *state, int nargs);
 
-static const enum type const count_arg_types[] = { T_NODESET };
-static const enum type const regexp_arg_types[] = { T_STRING };
+static const enum type const arg_types_nodeset[] = { T_NODESET };
+static const enum type const arg_types_string[] = { T_STRING };
+static const enum type const arg_types_bool[] = { T_BOOLEAN };
+static const enum type const arg_types_string_string[] = { T_STRING, T_STRING };
+static const enum type const arg_types_nodeset_string[] = { T_NODESET, T_STRING };
 
 static const struct func builtin_funcs[] = {
     { .name = "last", .arity = 0, .type = T_NUMBER, .arg_types = NULL,
@@ -288,17 +302,38 @@ static const struct func builtin_funcs[] = {
     { .name = "label", .arity = 0, .type = T_STRING, .arg_types = NULL,
       .impl = func_label },
     { .name = "count", .arity = 1, .type = T_NUMBER,
-      .arg_types = count_arg_types,
+      .arg_types = arg_types_nodeset,
       .impl = func_count },
     { .name = "regexp", .arity = 1, .type = T_REGEXP,
-      .arg_types = regexp_arg_types,
-      .impl =func_regexp }
+      .arg_types = arg_types_string,
+      .impl = func_regexp },
+    { .name = "regexp", .arity = 1, .type = T_REGEXP,
+      .arg_types = arg_types_nodeset,
+      .impl = func_regexp },
+    { .name = "regexp", .arity = 2, .type = T_REGEXP,
+      .arg_types = arg_types_string_string,
+      .impl = func_regexp_flag },
+    { .name = "regexp", .arity = 2, .type = T_REGEXP,
+      .arg_types = arg_types_nodeset_string,
+      .impl = func_regexp_flag },
+    { .name = "glob", .arity = 1, .type = T_REGEXP,
+      .arg_types = arg_types_string,
+      .impl = func_glob },
+    { .name = "glob", .arity = 1, .type = T_REGEXP,
+      .arg_types = arg_types_nodeset,
+      .impl = func_glob },
+    { .name = "int", .arity = 1, .type = T_NUMBER,
+      .arg_types = arg_types_string, .impl = func_int },
+    { .name = "int", .arity = 1, .type = T_NUMBER,
+      .arg_types = arg_types_nodeset, .impl = func_int },
+    { .name = "int", .arity = 1, .type = T_NUMBER,
+      .arg_types = arg_types_bool, .impl = func_int }
 };
 
-#define CHECK_ERROR                                                     \
+#define RET_ON_ERROR                                                    \
     if (state->errcode != PATHX_NOERROR) return
 
-#define CHECK_ERROR_RET0                                                \
+#define RET0_ON_ERROR                                                   \
     if (state->errcode != PATHX_NOERROR) return 0
 
 #define STATE_ERROR(state, err)                                         \
@@ -381,6 +416,7 @@ static void free_expr(struct expr *expr) {
     case E_APP:
         for (int i=0; i < expr->func->arity; i++)
             free_expr(expr->args[i]);
+        free(expr->args);
         break;
     default:
         assert(0);
@@ -512,7 +548,7 @@ static value_ind_t make_value(enum type tag, struct state *state) {
 ATTRIBUTE_UNUSED
 static value_ind_t clone_value(struct value *v, struct state *state) {
     value_ind_t vind = make_value(v->tag, state);
-    CHECK_ERROR_RET0;
+    RET0_ON_ERROR;
     struct value *clone = state->value_pool + vind;
 
     switch (v->tag) {
@@ -586,36 +622,47 @@ static struct value *expr_value(struct expr *expr, struct state *state) {
  ************************************************************************/
 static void eval_expr(struct expr *expr, struct state *state);
 
-static void func_last(struct state *state) {
+
+#define ensure_arity(min, max)                                          \
+    if (nargs < min || nargs > max) {                                   \
+        STATE_ERROR(state, PATHX_EINTERNAL);                            \
+        return;                                                         \
+    }
+
+static void func_last(struct state *state, int nargs) {
+    ensure_arity(0, 0);
     value_ind_t vind = make_value(T_NUMBER, state);
-    CHECK_ERROR;
+    RET_ON_ERROR;
 
     state->value_pool[vind].number = state->ctx_len;
     push_value(vind, state);
 }
 
-static void func_position(struct state *state) {
+static void func_position(struct state *state, int nargs) {
+    ensure_arity(0, 0);
     value_ind_t vind = make_value(T_NUMBER, state);
-    CHECK_ERROR;
+    RET_ON_ERROR;
 
     state->value_pool[vind].number = state->ctx_pos;
     push_value(vind, state);
 }
 
-static void func_count(struct state *state) {
+static void func_count(struct state *state, int nargs) {
+    ensure_arity(1, 1);
     value_ind_t vind = make_value(T_NUMBER, state);
-    CHECK_ERROR;
+    RET_ON_ERROR;
 
     struct value *ns = pop_value(state);
     state->value_pool[vind].number = ns->nodeset->used;
     push_value(vind, state);
 }
 
-static void func_label(struct state *state) {
+static void func_label(struct state *state, int nargs) {
+    ensure_arity(0, 0);
     value_ind_t vind = make_value(T_STRING, state);
     char *s;
 
-    CHECK_ERROR;
+    RET_ON_ERROR;
 
     if (state->ctx->label)
         s = strdup(state->ctx->label);
@@ -629,28 +676,107 @@ static void func_label(struct state *state) {
     push_value(vind, state);
 }
 
-static void func_regexp(struct state *state) {
+static void func_int(struct state *state, int nargs) {
+    ensure_arity(1, 1);
+    value_ind_t vind = make_value(T_NUMBER, state);
+    int64_t i = -1;
+    RET_ON_ERROR;
+
+    struct value *v = pop_value(state);
+    if (v->tag == T_BOOLEAN) {
+        i = v->boolval;
+    } else {
+        const char *s = NULL;
+        if (v->tag == T_STRING) {
+            s = v->string;
+        } else {
+            /* T_NODESET */
+            if (v->nodeset->used != 1) {
+                STATE_ERROR(state, PATHX_EMMATCH);
+                return;
+            }
+            s = v->nodeset->nodes[0]->value;
+        }
+        if (s != NULL) {
+            int r;
+            r = xstrtoint64(s, 10, &i);
+            if (r < 0) {
+                STATE_ERROR(state, PATHX_ENUMBER);
+                return;
+            }
+        }
+    }
+    state->value_pool[vind].number = i;
+    push_value(vind, state);
+}
+
+static struct regexp *
+nodeset_as_regexp(struct info *info, struct nodeset *ns, int glob, int nocase) {
+    struct regexp *result = NULL;
+    struct regexp **rx = NULL;
+    int used = 0;
+
+    for (int i = 0; i < ns->used; i++) {
+        if (ns->nodes[i]->value != NULL)
+            used += 1;
+    }
+
+    if (used == 0) {
+        /* If the nodeset is empty, make sure we produce a regexp
+         * that never matches anything */
+        result = make_regexp_unescape(info, "[^\001-\7ff]", nocase);
+    } else {
+        if (ALLOC_N(rx, ns->used) < 0)
+            goto error;
+        for (int i=0; i < ns->used; i++) {
+            if (ns->nodes[i]->value == NULL)
+                continue;
+
+            if (glob)
+                rx[i] = make_regexp_from_glob(info, ns->nodes[i]->value);
+            else
+                rx[i] = make_regexp_unescape(info, ns->nodes[i]->value, 0);
+            if (rx[i] == NULL)
+                goto error;
+        }
+        result = regexp_union_n(info, ns->used, rx);
+    }
+
+ error:
+    if (rx != NULL) {
+        for (int i=0; i < ns->used; i++)
+            unref(rx[i], regexp);
+        free(rx);
+    }
+    return result;
+}
+
+static void func_regexp_or_glob(struct state *state, int glob, int nocase) {
     value_ind_t vind = make_value(T_REGEXP, state);
     int r;
 
-    CHECK_ERROR;
+    RET_ON_ERROR;
 
-    struct value *str = pop_value(state);
-    assert(str->tag == T_STRING);
+    struct value *v = pop_value(state);
+    struct regexp *rx = NULL;
 
-    char *pat = strdup(str->string);
-    if (pat == NULL) {
-        STATE_ENOMEM;
-        return;
+    if (v->tag == T_STRING) {
+        if (glob)
+            rx = make_regexp_from_glob(state->error->info, v->string);
+        else
+            rx = make_regexp_unescape(state->error->info, v->string, nocase);
+    } else if (v->tag == T_NODESET) {
+        rx = nodeset_as_regexp(state->error->info, v->nodeset, glob, nocase);
+    } else {
+        assert(0);
     }
 
-    struct regexp *rx = make_regexp(NULL, pat, 0);
-    state->value_pool[vind].regexp = rx;
     if (rx == NULL) {
-        FREE(pat);
         STATE_ENOMEM;
         return;
     }
+
+    state->value_pool[vind].regexp = rx;
     r = regexp_compile(rx);
     if (r < 0) {
         const char *msg;
@@ -660,6 +786,29 @@ static void func_regexp(struct state *state) {
         return;
     }
     push_value(vind, state);
+}
+
+static void func_regexp(struct state *state, int nargs) {
+    ensure_arity(1, 1);
+    func_regexp_or_glob(state, 0, 0);
+}
+
+static void func_regexp_flag(struct state *state, int nargs) {
+    ensure_arity(2, 2);
+    int nocase = 0;
+    struct value *f = pop_value(state);
+
+    if (STREQ("i", f->string))
+        nocase = 1;
+    else
+        STATE_ERROR(state, PATHX_EREGEXPFLAG);
+
+    func_regexp_or_glob(state, 0, nocase);
+}
+
+static void func_glob(struct state *state, int nargs) {
+    ensure_arity(1, 1);
+    func_regexp_or_glob(state, 1, 0);
 }
 
 static bool coerce_to_bool(struct value *v) {
@@ -740,7 +889,7 @@ static void eval_eq(struct state *state, int neq) {
         if (neq)
             res = !res;
     }
-    CHECK_ERROR;
+    RET_ON_ERROR;
 
     push_boolean_value(res, state);
 }
@@ -754,7 +903,7 @@ static void eval_arith(struct state *state, enum binary_op op) {
     assert(l->tag == T_NUMBER);
     assert(r->tag == T_NUMBER);
 
-    CHECK_ERROR;
+    RET_ON_ERROR;
 
     if (op == OP_PLUS)
         res = l->number + r->number;
@@ -839,19 +988,55 @@ static void eval_union(struct state *state) {
     assert(l->tag == T_NODESET);
     assert(r->tag == T_NODESET);
 
-    CHECK_ERROR;
+    RET_ON_ERROR;
 
     res = clone_nodeset(l->nodeset, state);
-    CHECK_ERROR;
+    RET_ON_ERROR;
     for (int i=0; i < r->nodeset->used; i++) {
         ns_add(res, r->nodeset->nodes[i], state);
-        CHECK_ERROR;
+        RET_ON_ERROR;
     }
     state->value_pool[vind].nodeset = res;
     push_value(vind, state);
 }
 
-static void eval_re_match(struct state *state) {
+static void eval_concat_string(struct state *state) {
+    value_ind_t vind = make_value(T_STRING, state);
+    struct value *r = pop_value(state);
+    struct value *l = pop_value(state);
+    char *res = NULL;
+
+    RET_ON_ERROR;
+
+    if (ALLOC_N(res, strlen(l->string) + strlen(r->string) + 1) < 0) {
+        STATE_ENOMEM;
+        return;
+    }
+    strcpy(res, l->string);
+    strcat(res, r->string);
+    state->value_pool[vind].string = res;
+    push_value(vind, state);
+}
+
+static void eval_concat_regexp(struct state *state) {
+    value_ind_t vind = make_value(T_REGEXP, state);
+    struct value *r = pop_value(state);
+    struct value *l = pop_value(state);
+    struct regexp *rx = NULL;
+
+    RET_ON_ERROR;
+
+    rx = regexp_concat(state->error->info, l->regexp, r->regexp);
+    if (rx == NULL) {
+        STATE_ENOMEM;
+        return;
+    }
+
+    state->value_pool[vind].regexp = rx;
+    push_value(vind, state);
+}
+
+static void eval_re_match(struct state *state, enum binary_op op) {
     struct value *rx  = pop_value(state);
     struct value *v = pop_value(state);
 
@@ -859,21 +1044,23 @@ static void eval_re_match(struct state *state) {
 
     if (v->tag == T_STRING) {
         result = eval_re_match_str(state, rx->regexp, v->string);
-        CHECK_ERROR;
+        RET_ON_ERROR;
     } else if (v->tag == T_NODESET) {
         for (int i=0; i < v->nodeset->used && result == false; i++) {
             struct tree *t = v->nodeset->nodes[i];
             result = eval_re_match_str(state, rx->regexp, t->value);
-            CHECK_ERROR;
+            RET_ON_ERROR;
         }
     }
+    if (op == OP_RE_NOMATCH)
+        result = !result;
     push_boolean_value(result, state);
 }
 
 static void eval_binary(struct expr *expr, struct state *state) {
     eval_expr(expr->left, state);
     eval_expr(expr->right, state);
-    CHECK_ERROR;
+    RET_ON_ERROR;
 
     switch (expr->op) {
     case OP_EQ:
@@ -894,8 +1081,15 @@ static void eval_binary(struct expr *expr, struct state *state) {
     case OP_GE:
         eval_rel(state, true, true);
         break;
-    case OP_MINUS:
     case OP_PLUS:
+        if (expr->type == T_NUMBER)
+            eval_arith(state, expr->op);
+        else if (expr->type == T_STRING)
+            eval_concat_string(state);
+        else if (expr->type == T_REGEXP)
+            eval_concat_regexp(state);
+        break;
+    case OP_MINUS:
     case OP_STAR:
         eval_arith(state, expr->op);
         break;
@@ -907,7 +1101,8 @@ static void eval_binary(struct expr *expr, struct state *state) {
         eval_union(state);
         break;
     case OP_RE_MATCH:
-        eval_re_match(state);
+    case OP_RE_NOMATCH:
+        eval_re_match(state, expr->op);
         break;
     default:
         assert(0);
@@ -919,14 +1114,14 @@ static void eval_app(struct expr *expr, struct state *state) {
 
     for (int i=0; i < expr->func->arity; i++) {
         eval_expr(expr->args[i], state);
-        CHECK_ERROR;
+        RET_ON_ERROR;
     }
-    expr->func->impl(state);
+    expr->func->impl(state, expr->func->arity);
 }
 
 static bool eval_pred(struct expr *expr, struct state *state) {
     eval_expr(expr, state);
-    CHECK_ERROR_RET0;
+    RET0_ON_ERROR;
 
     struct value *v = pop_value(state);
     switch(v->tag) {
@@ -966,7 +1161,7 @@ static void ns_filter(struct nodeset *ns, struct pred *predicates,
         for (int i=0; i < ns->used; state->ctx_pos++) {
             state->ctx = ns->nodes[i];
             bool match = eval_pred(predicates->exprs[p], state);
-            CHECK_ERROR;
+            RET_ON_ERROR;
             if (match) {
                 i+=1;
             } else {
@@ -1004,13 +1199,22 @@ static void ns_from_locpath(struct locpath *lp, uint *maxns,
         if (HAS_ERROR(state))
             goto error;
     }
+
     if (root == NULL) {
-        ns_add((*ns)[0], state->ctx, state);
+        struct step *first_step = NULL;
+        if (lp != NULL)
+            first_step = lp->steps;
+
+        struct tree *root_tree;
+        root_tree = step_root(first_step, state->ctx, state->root_ctx);
+        ns_add((*ns)[0], root_tree, state);
     } else {
         for (int i=0; i < root->used; i++)
             ns_add((*ns)[0], root->nodes[i], state);
     }
-    CHECK_ERROR;
+
+    if (HAS_ERROR(state))
+        goto error;
 
     uint cur_ns = 0;
     list_for_each(step, lp->steps) {
@@ -1023,7 +1227,8 @@ static void ns_from_locpath(struct locpath *lp, uint *maxns,
                 ns_add(next, node, state);
         }
         ns_filter(next, step->predicates, state);
-        CHECK_ERROR;
+        if (HAS_ERROR(state))
+            goto error;
         cur_ns += 1;
     }
 
@@ -1050,7 +1255,7 @@ static void eval_filter(struct expr *expr, struct state *state) {
         ns_from_locpath(lp, &maxns, &ns, NULL, state);
     } else {
         eval_expr(expr->primary, state);
-        CHECK_ERROR;
+        RET_ON_ERROR;
         value_ind_t primary_ind = pop_value_ind(state);
         struct value *primary = state->value_pool + primary_ind;
         assert(primary->tag == T_NODESET);
@@ -1059,10 +1264,10 @@ static void eval_filter(struct expr *expr, struct state *state) {
         primary = state->value_pool + primary_ind;
         ns_from_locpath(lp, &maxns, &ns, primary->nodeset, state);
     }
-    CHECK_ERROR;
+    RET_ON_ERROR;
 
     value_ind_t vind = make_value(T_NODESET, state);
-    CHECK_ERROR;
+    RET_ON_ERROR;
     state->value_pool[vind].nodeset = ns[maxns];
     push_value(vind, state);
 
@@ -1091,12 +1296,12 @@ static struct value *lookup_var(const char *ident, struct state *state) {
 static void eval_var(struct expr *expr, struct state *state) {
     struct value *v = lookup_var(expr->ident, state);
     value_ind_t vind = clone_value(v, state);
-    CHECK_ERROR;
+    RET_ON_ERROR;
     push_value(vind, state);
 }
 
 static void eval_expr(struct expr *expr, struct state *state) {
-    CHECK_ERROR;
+    RET_ON_ERROR;
     switch (expr->tag) {
     case E_FILTER:
         eval_filter(expr, state);
@@ -1137,7 +1342,7 @@ static void check_preds(struct pred *pred, struct state *state) {
     for (int i=0; i < pred->nexpr; i++) {
         struct expr *e = pred->exprs[i];
         check_expr(e, state);
-        CHECK_ERROR;
+        RET_ON_ERROR;
         if (e->type != T_NODESET && e->type != T_NUMBER &&
             e->type != T_BOOLEAN) {
             STATE_ERROR(state, PATHX_ETYPE);
@@ -1157,26 +1362,48 @@ static void check_filter(struct expr *expr, struct state *state) {
             return;
         }
         check_preds(expr->predicates, state);
-        CHECK_ERROR;
+        RET_ON_ERROR;
     }
     list_for_each(s, locpath->steps) {
         check_preds(s->predicates, state);
-        CHECK_ERROR;
+        RET_ON_ERROR;
     }
     expr->type = T_NODESET;
 }
 
 static void check_app(struct expr *expr, struct state *state) {
     assert(expr->tag == E_APP);
+
     for (int i=0; i < expr->func->arity; i++) {
         check_expr(expr->args[i], state);
-        CHECK_ERROR;
-        if (expr->args[i]->type != expr->func->arg_types[i]) {
-            STATE_ERROR(state, PATHX_ETYPE);
-            return;
-        }
+        RET_ON_ERROR;
     }
-    expr->type = expr->func->type;
+
+    int f;
+    for (f=0; f < ARRAY_CARDINALITY(builtin_funcs); f++) {
+        const struct func *fn = builtin_funcs + f;
+        if (STRNEQ(expr->func->name, fn->name))
+            continue;
+        if (expr->func->arity != fn->arity)
+            continue;
+
+        int match = 1;
+        for (int i=0; i < expr->func->arity; i++) {
+            if (expr->args[i]->type != fn->arg_types[i]) {
+                match = 0;
+                break;
+            }
+        }
+        if (match)
+            break;
+    }
+
+    if (f < ARRAY_CARDINALITY(builtin_funcs)) {
+        expr->func = builtin_funcs + f;
+        expr->type = expr->func->type;
+    } else {
+        STATE_ERROR(state, PATHX_ETYPE);
+    }
 }
 
 /* Check the binary operators. Type rules:
@@ -1189,10 +1416,13 @@ static void check_app(struct expr *expr, struct state *state) {
  * '>', '>=',
  * '<', '<='  : T_NUMBER -> T_NUMBER -> T_BOOLEAN
  *              T_STRING -> T_STRING -> T_BOOLEAN
+ * '+'        : T_NUMBER -> T_NUMBER -> T_NUMBER
+ *              T_STRING -> T_STRING -> T_STRING
+ *              T_REGEXP -> T_REGEXP -> T_REGEXP
  * '+', '-', '*': T_NUMBER -> T_NUMBER -> T_NUMBER
  *
  * 'and', 'or': T_BOOLEAN -> T_BOOLEAN -> T_BOOLEAN
- * '=~'       : T_STRING  -> T_REGEXP  -> T_BOOLEAN
+ * '=~', '!~' : T_STRING  -> T_REGEXP  -> T_BOOLEAN
  *              T_NODESET -> T_REGEXP  -> T_BOOLEAN
  *
  * '|'        : T_NODESET -> T_NODESET -> T_NODESET
@@ -1202,7 +1432,7 @@ static void check_app(struct expr *expr, struct state *state) {
 static void check_binary(struct expr *expr, struct state *state) {
     check_expr(expr->left, state);
     check_expr(expr->right, state);
-    CHECK_ERROR;
+    RET_ON_ERROR;
 
     enum type l = expr->left->type;
     enum type r = expr->right->type;
@@ -1226,6 +1456,9 @@ static void check_binary(struct expr *expr, struct state *state) {
         res = T_BOOLEAN;
         break;
     case OP_PLUS:
+        ok = (l == r && (l == T_NUMBER || l == T_STRING || l == T_REGEXP));
+        res = l;
+        break;
     case OP_MINUS:
     case OP_STAR:
         ok =  (l == T_NUMBER && r == T_NUMBER);
@@ -1241,6 +1474,7 @@ static void check_binary(struct expr *expr, struct state *state) {
         res = T_BOOLEAN;
         break;
     case OP_RE_MATCH:
+    case OP_RE_NOMATCH:
         ok = ((l == T_STRING || l == T_NODESET) && r == T_REGEXP);
         res = T_BOOLEAN;
         break;
@@ -1265,7 +1499,7 @@ static void check_var(struct expr *expr, struct state *state) {
 
 /* Typecheck an expression */
 static void check_expr(struct expr *expr, struct state *state) {
-    CHECK_ERROR;
+    RET_ON_ERROR;
     switch(expr->tag) {
     case E_FILTER:
         check_filter(expr, state);
@@ -1374,17 +1608,24 @@ static void push_new_binary_op(enum binary_op op, struct state *state) {
 }
 
 /*
- * Name ::= /[^][/=) \t\n]+/
+ * NameNoWS ::= [^][|/\= \t\n] | \\.
+ * NameWS   ::= [^][|/\=] | \\.
+ * Name ::= NameNoWS NameWS* NameNoWS | NameNoWS
  */
 static char *parse_name(struct state *state) {
+    static const char const follow[] = "][|/=()!,";
     const char *s = state->pos;
     char *result;
 
-    while (*state->pos != '\0' &&
-           *state->pos != L_BRACK && *state->pos != SEP &&
-           *state->pos != R_BRACK && *state->pos != '=' &&
-           *state->pos != ')' &&
-           !isspace(*state->pos)) {
+    while (*state->pos != '\0' && strchr(follow, *state->pos) == NULL) {
+        /* This is a hack: since we allow spaces in names, we need to avoid
+         * gobbling up stuff that is in follow(Name), e.g. 'or' so that
+         * things like [name1 or name2] still work.
+         */
+        if (STREQLEN(state->pos, " or ", strlen(" or ")) ||
+            STREQLEN(state->pos, " and ", strlen(" and ")))
+            break;
+
         if (*state->pos == '\\') {
             state->pos += 1;
             if (*state->pos == '\0') {
@@ -1392,6 +1633,14 @@ static char *parse_name(struct state *state) {
                 return NULL;
             }
         }
+        state->pos += 1;
+    }
+
+    /* Strip trailing white space */
+    if (state->pos > s) {
+        state->pos -= 1;
+        while (isspace(*state->pos) && state->pos >= s)
+            state->pos -= 1;
         state->pos += 1;
     }
 
@@ -1427,7 +1676,7 @@ static struct pred *parse_predicates(struct state *state) {
     while (match(state, L_BRACK)) {
         parse_expr(state);
         nexpr += 1;
-        CHECK_ERROR_RET0;
+        RET0_ON_ERROR;
 
         if (! match(state, R_BRACK)) {
             STATE_ERROR(state, PATHX_EPRED);
@@ -1539,7 +1788,8 @@ parse_relative_location_path(struct state *state) {
     struct locpath *locpath = NULL;
 
     step = parse_step(state);
-    CHECK_ERROR_RET0;
+    if (HAS_ERROR(state))
+        goto error;
 
     if (ALLOC(locpath) < 0) {
         STATE_ENOMEM;
@@ -1709,11 +1959,13 @@ static void parse_literal(struct state *state) {
 static void parse_function_call(struct state *state) {
     const struct func *func = NULL;
     struct expr *expr = NULL;
-    int nargs = 0;
+    int nargs = 0, find = 0;
 
-    for (int i=0; i < ARRAY_CARDINALITY(builtin_funcs); i++) {
-        if (looking_at(state, builtin_funcs[i].name, "("))
-            func = builtin_funcs + i;
+    for (; find < ARRAY_CARDINALITY(builtin_funcs); find++) {
+        if (looking_at(state, builtin_funcs[find].name, "(")) {
+            func = builtin_funcs + find;
+            break;
+        }
     }
     if (func == NULL) {
         STATE_ERROR(state, PATHX_ENAME);
@@ -1724,7 +1976,7 @@ static void parse_function_call(struct state *state) {
         do {
             nargs += 1;
             parse_expr(state);
-            CHECK_ERROR;
+            RET_ON_ERROR;
         } while (match(state, ','));
 
         if (! match(state, ')')) {
@@ -1733,7 +1985,18 @@ static void parse_function_call(struct state *state) {
         }
     }
 
-    if (nargs != func->arity) {
+    int found = 0; /* Whether there is a builtin matching in name and arity */
+    for (int i=find; i < ARRAY_CARDINALITY(builtin_funcs); i++) {
+        if (STRNEQ(func->name, builtin_funcs[i].name))
+            break;
+        if (builtin_funcs[i].arity == nargs) {
+            func = builtin_funcs + i;
+            found = 1;
+            break;
+        }
+    }
+
+    if (! found) {
         STATE_ERROR(state, PATHX_EARITY);
         return;
     }
@@ -1803,7 +2066,7 @@ static void parse_primary_expr(struct state *state) {
         parse_number(state);
     } else if (match(state, '(')) {
         parse_expr(state);
-        CHECK_ERROR;
+        RET_ON_ERROR;
         if (! match(state, ')')) {
             STATE_ERROR(state, PATHX_EPAREN);
             return;
@@ -1851,9 +2114,9 @@ static void parse_path_expr(struct state *state) {
 
     if (looking_at_primary_expr(state)) {
         parse_primary_expr(state);
-        CHECK_ERROR;
+        RET_ON_ERROR;
         predicates = parse_predicates(state);
-        CHECK_ERROR;
+        RET_ON_ERROR;
         if (match(state, '/')) {
             if (match(state, '/')) {
                 locpath = parse_relative_location_path(state);
@@ -1910,10 +2173,10 @@ static void parse_path_expr(struct state *state) {
  */
 static void parse_union_expr(struct state *state) {
     parse_path_expr(state);
-    CHECK_ERROR;
+    RET_ON_ERROR;
     while (match(state, '|')) {
         parse_path_expr(state);
-        CHECK_ERROR;
+        RET_ON_ERROR;
         push_new_binary_op(OP_UNION, state);
     }
 }
@@ -1923,10 +2186,10 @@ static void parse_union_expr(struct state *state) {
  */
 static void parse_multiplicative_expr(struct state *state) {
     parse_union_expr(state);
-    CHECK_ERROR;
+    RET_ON_ERROR;
     while (match(state, '*')) {
         parse_union_expr(state);
-        CHECK_ERROR;
+        RET_ON_ERROR;
         push_new_binary_op(OP_STAR, state);
     }
 }
@@ -1937,13 +2200,13 @@ static void parse_multiplicative_expr(struct state *state) {
  */
 static void parse_additive_expr(struct state *state) {
     parse_multiplicative_expr(state);
-    CHECK_ERROR;
+    RET_ON_ERROR;
     while (*state->pos == '+' || *state->pos == '-') {
         enum binary_op op = (*state->pos == '+') ? OP_PLUS : OP_MINUS;
         state->pos += 1;
         skipws(state);
         parse_multiplicative_expr(state);
-        CHECK_ERROR;
+        RET_ON_ERROR;
         push_new_binary_op(op, state);
     }
 }
@@ -1954,7 +2217,7 @@ static void parse_additive_expr(struct state *state) {
  */
 static void parse_relational_expr(struct state *state) {
     parse_additive_expr(state);
-    CHECK_ERROR;
+    RET_ON_ERROR;
     if (*state->pos == '<' || *state->pos == '>') {
         enum binary_op op = (*state->pos == '<') ? OP_LT : OP_GT;
         state->pos += 1;
@@ -1964,7 +2227,7 @@ static void parse_relational_expr(struct state *state) {
         }
         skipws(state);
         parse_additive_expr(state);
-        CHECK_ERROR;
+        RET_ON_ERROR;
         push_new_binary_op(op, state);
     }
 }
@@ -1972,24 +2235,26 @@ static void parse_relational_expr(struct state *state) {
 /*
  * EqualityExpr ::= RelationalExpr (EqualityOp RelationalExpr)? | ReMatchExpr
  * EqualityOp ::= "=" | "!="
- * ReMatchExpr ::= RelationalExpr "=~" RelationalExpr
+ * ReMatchExpr ::= RelationalExpr MatchOp RelationalExpr
+ * MatchOp ::= "=~" | "!~"
  */
 static void parse_equality_expr(struct state *state) {
     parse_relational_expr(state);
-    CHECK_ERROR;
-    if (*state->pos == '=' && state->pos[1] == '~') {
+    RET_ON_ERROR;
+    if ((*state->pos == '=' || *state->pos == '!') && state->pos[1] == '~') {
+        enum binary_op op = (*state->pos == '=') ? OP_RE_MATCH : OP_RE_NOMATCH;
         state->pos += 2;
         skipws(state);
         parse_relational_expr(state);
-        CHECK_ERROR;
-        push_new_binary_op(OP_RE_MATCH, state);
+        RET_ON_ERROR;
+        push_new_binary_op(op, state);
     } else if (*state->pos == '=' ||
         (*state->pos == '!' && state->pos[1] == '=')) {
         enum binary_op op = (*state->pos == '=') ? OP_EQ : OP_NEQ;
         state->pos += (op == OP_EQ) ? 1 : 2;
         skipws(state);
         parse_relational_expr(state);
-        CHECK_ERROR;
+        RET_ON_ERROR;
         push_new_binary_op(op, state);
     }
 }
@@ -1999,13 +2264,13 @@ static void parse_equality_expr(struct state *state) {
  */
 static void parse_and_expr(struct state *state) {
     parse_equality_expr(state);
-    CHECK_ERROR;
+    RET_ON_ERROR;
     while (*state->pos == 'a' && state->pos[1] == 'n'
         && state->pos[2] == 'd') {
         state->pos += 3;
         skipws(state);
         parse_equality_expr(state);
-        CHECK_ERROR;
+        RET_ON_ERROR;
         push_new_binary_op(OP_AND, state);
     }
 }
@@ -2015,12 +2280,12 @@ static void parse_and_expr(struct state *state) {
  */
 static void parse_or_expr(struct state *state) {
     parse_and_expr(state);
-    CHECK_ERROR;
+    RET_ON_ERROR;
     while (*state->pos == 'o' && state->pos[1] == 'r') {
         state->pos += 2;
         skipws(state);
         parse_and_expr(state);
-        CHECK_ERROR;
+        RET_ON_ERROR;
         push_new_binary_op(OP_OR, state);
     }
 }
@@ -2045,6 +2310,25 @@ static void store_error(struct pathx *pathx) {
     if (err == NULL || errcode == PATHX_NOERROR || err->code != AUG_NOERROR)
         return;
 
+    switch (errcode) {
+    case PATHX_ENOMEM:
+        err->code = AUG_ENOMEM;
+        break;
+    case PATHX_EMMATCH:
+        err->code = AUG_EMMATCH;
+        break;
+    case PATHX_ENOMATCH:
+        err->code = AUG_ENOMATCH;
+        break;
+    default:
+        err->code = AUG_EPATHX;
+        break;
+    }
+
+    /* We only need details for pathx syntax errors */
+    if (err->code != AUG_EPATHX)
+        return;
+
     int pos;
     pathx_msg = pathx_error(pathx, NULL, &pos);
 
@@ -2063,7 +2347,6 @@ static void store_error(struct pathx *pathx) {
         strcat(pos_str, path + pos);
     }
 
-    err->code = errcode == PATHX_ENOMEM ? AUG_ENOMEM : AUG_EPATHX;
     err->minor = errcode;
     err->details = pos_str;
     pos_str = NULL;
@@ -2075,6 +2358,7 @@ int pathx_parse(const struct tree *tree,
                 const char *txt,
                 bool need_nodeset,
                 struct pathx_symtab *symtab,
+                struct tree *root_ctx,
                 struct pathx **pathx) {
     struct state *state = NULL;
 
@@ -2095,6 +2379,7 @@ int pathx_parse(const struct tree *tree,
     state->txt = txt;
     state->pos = txt;
     state->symtab = symtab;
+    state->root_ctx = root_ctx;
     state->error = err;
 
     if (ALLOC_N(state->value_pool, 8) < 0) {
@@ -2158,6 +2443,37 @@ static struct tree *tree_prev(struct tree *pos) {
              node->next != pos;
              node = node->next);
     }
+    return node;
+}
+
+/* When the first step doesn't begin with ROOT then use relative root context
+ * instead. */
+static struct tree *step_root(struct step *step, struct tree *ctx,
+                              struct tree *root_ctx) {
+    struct tree *node = NULL;
+    switch (step->axis) {
+    case SELF:
+    case CHILD:
+    case DESCENDANT:
+    case PARENT:
+    case ANCESTOR:
+    case PRECEDING_SIBLING:
+    case FOLLOWING_SIBLING:
+        /* only use root_ctx when ctx is the absolute tree root */
+        if (ctx == ctx->parent && root_ctx != NULL)
+            node = root_ctx;
+        else
+            node = ctx;
+        break;
+    case ROOT:
+    case DESCENDANT_OR_SELF:
+        node = ctx;
+        break;
+    default:
+        assert(0);
+    }
+    if (node == NULL)
+        return NULL;
     return node;
 }
 
@@ -2346,7 +2662,7 @@ int pathx_expand_tree(struct pathx *path, struct tree **tree) {
 
     if (lpt.maxns == 0) {
         if (v->tag != T_NODESET || v->nodeset->used == 0) {
-            STATE_ERROR(path->state, PATHX_ENONODES);
+            STATE_ERROR(path->state, PATHX_ENOMATCH);
             goto error;
         }
         if (v->nodeset->used > 1)
@@ -2357,8 +2673,10 @@ int pathx_expand_tree(struct pathx *path, struct tree **tree) {
 
     *tree = path->origin;
     r = locpath_search(&lpt, tree, &step);
-    if (r == -1)
-        return -1;
+    if (r == -1) {
+        STATE_ERROR(path->state, PATHX_EMMATCH);
+        goto error;
+    }
 
     if (step == NULL)
         return 0;
@@ -2414,14 +2732,13 @@ const char *pathx_error(struct pathx *path, const char **txt, int *pos) {
             errcode = path->state->errcode;
         else
             errcode = PATHX_EINTERNAL;
+
+        if (txt)
+            *txt = path->state->txt;
+
+        if (pos)
+            *pos = path->state->pos - path->state->txt;
     }
-
-    if (txt)
-        *txt = path->state->txt;
-
-    if (pos)
-        *pos = path->state->pos - path->state->txt;
-
     return errcodes[errcode];
 }
 

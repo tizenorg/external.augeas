@@ -1,7 +1,7 @@
 /*
  * augparse.c: utility for parsing config files and seeing what's happening
  *
- * Copyright (C) 2007-2010 David Lutterkort
+ * Copyright (C) 2007-2011 David Lutterkort
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -38,6 +38,7 @@ static void usage(void) {
     fprintf(stderr, "Evaluate MODULE. Generally, MODULE should contain unit tests.\n");
     fprintf(stderr, "\nOptions:\n\n");
     fprintf(stderr, "  -I, --include DIR  search DIR for modules; can be given mutiple times\n");
+    fprintf(stderr, "  -t, --trace        trace module loading\n");
     fprintf(stderr, "  --nostdinc         do not search the builtin default directories for modules\n");
     fprintf(stderr, "  --notypecheck      do not typecheck lenses\n");
     fprintf(stderr, "  --version          print version information and exit\n");
@@ -54,7 +55,7 @@ static void print_version_info(struct augeas *aug) {
         goto error;
 
     fprintf(stderr, "augparse %s <http://augeas.net/>\n", version);
-    fprintf(stderr, "Copyright (C) 2009-2010 David Lutterkort\n");
+    fprintf(stderr, "Copyright (C) 2007-2011 David Lutterkort\n");
     fprintf(stderr, "License LGPLv2+: GNU LGPL version 2.1 or later\n");
     fprintf(stderr, "                 <http://www.gnu.org/licenses/lgpl-2.1.html>\n");
     fprintf(stderr, "This is free software: you are free to change and redistribute it.\n");
@@ -78,6 +79,7 @@ int main(int argc, char **argv) {
     struct option options[] = {
         { "help",      0, 0, 'h' },
         { "include",   1, 0, 'I' },
+        { "trace",     0, 0, 't' },
         { "nostdinc",  0, 0, VAL_NO_STDINC },
         { "notypecheck",  0, 0, VAL_NO_TYPECHECK },
         { "version",  0, 0, VAL_VERSION },
@@ -88,10 +90,13 @@ int main(int argc, char **argv) {
     progname = argv[0];
 
     setlocale(LC_ALL, "");
-    while ((opt = getopt_long(argc, argv, "hI:", options, &idx)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hI:t", options, &idx)) != -1) {
         switch(opt) {
         case 'I':
             argz_add(&loadpath, &loadpathlen, optarg);
+            break;
+        case 't':
+            flags |= AUG_TRACE_MODULE_LOADING;
             break;
         case 'h':
             usage();

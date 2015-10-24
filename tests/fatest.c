@@ -1,7 +1,7 @@
 /*
  * fatest.c:
  *
- * Copyright (C) 2007 Red Hat Inc.
+ * Copyright (C) 2007-2011 Red Hat Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -581,6 +581,66 @@ static void testExpandNoCase(CuTest *tc) {
     free(s);
 }
 
+static void testNoCaseComplement(CuTest *tc) {
+    const char *key_s = "keY";
+    struct fa *key = make_good_fa(tc, key_s);
+    struct fa *isect = NULL;
+
+    fa_nocase(key);
+
+    struct fa *comp = mark(fa_complement(key));
+
+    key = make_good_fa(tc, key_s);
+
+    /* We used to have a bug in totalize that caused the intersection
+     * to contain "keY" */
+    isect = fa_intersect(key, comp);
+
+    CuAssertIntEquals(tc, 1, fa_is_basic(isect, FA_EMPTY));
+}
+
+static void testEnumerate(CuTest *tc) {
+    struct fa *fa1 = make_good_fa(tc, "[ab](cc|dd)");
+    static const char *const fa1_expected[] =
+        { "acc", "add", "bcc", "bdd" };
+    struct fa *fa_inf = make_good_fa(tc, "a(b*|d)c");
+    struct fa *fa_empty = make_good_fa(tc, "a?");
+
+    char **words;
+    int r;
+
+    r = fa_enumerate(fa1, 2, &words);
+    CuAssertIntEquals(tc, -2, r);
+    CuAssertPtrEquals(tc, NULL, words);
+
+    r = fa_enumerate(fa1, 10, &words);
+    CuAssertIntEquals(tc, 4, r);
+    CuAssertPtrNotNull(tc, words);
+
+    for (int i=0; i < r; i++) {
+        int found = 0;
+        for (int j=0; j < ARRAY_CARDINALITY(fa1_expected); j++) {
+            if (STREQ(words[i], fa1_expected[j]))
+                found = 1;
+        }
+        if (!found) {
+            char *msg;
+            asprintf(&msg, "Generated word %s not expected", words[i]);
+            CuFail(tc, msg);
+        }
+    }
+
+    r = fa_enumerate(fa_inf, 100, &words);
+    CuAssertIntEquals(tc, -2, r);
+    CuAssertPtrEquals(tc, NULL, words);
+
+    r = fa_enumerate(fa_empty, 10, &words);
+    CuAssertIntEquals(tc, 2, r);
+    CuAssertPtrNotNull(tc, words);
+    CuAssertStrEquals(tc, "", words[0]);
+    CuAssertStrEquals(tc, "a", words[1]);
+}
+
 int main(int argc, char **argv) {
     if (argc == 1) {
         char *output = NULL;
@@ -605,6 +665,8 @@ int main(int argc, char **argv) {
         SUITE_ADD_TEST(suite, testExpandCharRanges);
         SUITE_ADD_TEST(suite, testNoCase);
         SUITE_ADD_TEST(suite, testExpandNoCase);
+        SUITE_ADD_TEST(suite, testNoCaseComplement);
+        SUITE_ADD_TEST(suite, testEnumerate);
 
         CuSuiteRun(suite);
         CuSuiteSummary(suite, &output);

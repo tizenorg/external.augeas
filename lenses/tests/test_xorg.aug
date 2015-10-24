@@ -23,6 +23,7 @@ Section \"Device\"
 	Option 		\"MonitorLayout\" \"LVDS,VGA\"
 	VideoRam	229376
         Option          \"NoAccel\"
+        Screen          0
 EndSection
 
 Section \"Screen\"
@@ -34,6 +35,12 @@ Section \"Screen\"
                 Depth     24
                 Modes    \"1280x1024\" \"1280x960\" \"1280x800\"
         EndSubSection
+EndSection
+
+Section \"Module\"
+          SubSection \"extmod\"
+                   Option  \"omit XFree86-DGA\"
+          EndSubSection
 EndSection
 "
 
@@ -61,7 +68,9 @@ EndSection
         { "Option"     = "MonitorLayout"
              { "value"  = "LVDS,VGA" } }
         { "VideoRam"   = "229376" }
-        { "Option"     = "NoAccel" } }
+        { "Option"     = "NoAccel" } 
+        { "Screen"
+          { "num" = "0" } } }
      { }
      { "Screen"
         { "Identifier" = "Screen0" }
@@ -76,3 +85,7 @@ EndSection
               { "mode" = "1280x1024" }
               { "mode" = "1280x960" }
               { "mode" = "1280x800" } } } }
+     { }
+     { "Module"
+       { "extmod"
+           { "Option" = "omit XFree86-DGA" } } }

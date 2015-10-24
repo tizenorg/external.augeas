@@ -18,7 +18,7 @@ let empty    = IniFile.empty
  *                        ENTRY
  * Entry keywords can be bare digits as well (the [server] section)
  *************************************************************************)
-let entry_re = ( /[A-Za-z0-9][A-Za-z0-9\._-]*/ )
+let entry_re = ( /[A-Za-z0-9][A-Za-z0-9._-]*/ )
 let entry    = IniFile.entry entry_re sep comment
 
 
@@ -42,7 +42,7 @@ let record_anon = [ label ".anon" . ( entry | empty )+ ]
 let lns    = record_anon? . record*
 
 let filter = (incl "/etc/gdm/gdm.conf*")
-             . Util.stdexcl
+           . (incl "/etc/gdm/custom.conf")
+           . Util.stdexcl
 
 let xfm = transform lns filter
-

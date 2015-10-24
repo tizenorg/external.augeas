@@ -12,7 +12,7 @@ module Device_map =
   let empty   = Util.empty
 
   let dev_name = /(h|f|c)d[0-9]+(,[0-9a-zA-Z]+){0,2}/
-  let dev_hex  = /0x[0-9a-fA-F]+/
+  let dev_hex  = Rx.hex
   let dev_dec  = /[0-9]+/
 
   let device = del_str "(" . key ( dev_name | dev_hex | dev_dec ) .  del_str ")"
@@ -21,7 +21,7 @@ module Device_map =
 
   let lns = ( empty | comment | map ) *
 
-  let xfm = transform lns (incl "/boot/grub/device.map")
+  let xfm = transform lns (incl "/boot/*/device.map")
 
 (* Local Variables: *)
 (* mode: caml *)

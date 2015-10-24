@@ -17,32 +17,26 @@
 module Xinetd =
   autoload xfm
 
-  let comment = Util.comment
-  let empty   = Util.empty
+  let opt_spc = Util.del_opt_ws " "
 
-  let name = key /[^ \t\n\/=+-]+/
-  let bol_spc = del /[ \t]*/ "\t"
-  let spc = del /[ \t]+/ " "
-  let eol = del /[ \t]*\n/ "\n"
+  let spc_equal = opt_spc . Sep.equal
 
-  let op_delim (op:string) = del (/[ \t]*/ . op . /[ \t]*/) (" " . op . " ")
-  let eq       = op_delim "="
+  let op = ([ label "add" . opt_spc . Util.del_str "+=" ]
+           |[ label "del" . opt_spc . Util.del_str "-=" ]
+           | spc_equal)
 
-  let op = ([ label "add" . op_delim "+=" ]
-           |[ label "del" . op_delim "-=" ]
-           | eq)
+  let value = store Rx.no_spaces
 
-  let value = store /[^ \t\n]+/
+  let indent = del Rx.opt_space "\t"
 
   let attr_one (n:regexp) =
-    [ bol_spc . key n . eq . value . eol ]
+    Build.key_value n Sep.space_equal value
 
   let attr_lst (n:regexp) (op_eq: lens) =
-    [ bol_spc . key n . op_eq .
-        [label "value" . value] . [label "value" . spc . value]* .
-      eol ]
+    let value_entry =  [ label "value" . value ] in
+    Build.key_value n op_eq (opt_spc . Build.opt_list value_entry Sep.space)?
 
-  let attr_lst_eq (n:regexp) = attr_lst n eq
+  let attr_lst_eq (n:regexp) = attr_lst n spc_equal
 
   let attr_lst_op (n:regexp) = attr_lst n op
 
@@ -53,28 +47,22 @@ module Xinetd =
    *      using lens union (attr_one "a" | attr_one "b"|..) because the latter
    *      causes the type checker to work _very_ hard.
    *)
-
   let service_attr =
-    attr_one ("socket_type" | "protocol" | "wait" | "user" | "group"
-             |"server" | "instances"  | "rpc_version" | "rpc_number"
-             | "id" | "port" | "nice" | "banner" | "bind" | "interface"
-             | "per_source" | "groups" | "banner_success" | "banner_fail"
-             | "disable" | "max_load" | "rlimit_as" | "rlimit_cpu"
-             | "rlimit_data" | "rlimit_rss" | "rlimit_stack" | "v6only"
-             | "deny_time" | "umask" | "mdns" | "libwrap")
+   attr_one (/socket_type|protocol|wait|user|group|server|instances/i
+     |/rpc_version|rpc_number|id|port|nice|banner|bind|interface/i
+     |/per_source|groups|banner_success|banner_fail|disable|max_load/i
+     |/rlimit_as|rlimit_cpu|rlimit_data|rlimit_rss|rlimit_stack|v6only/i
+     |/deny_time|umask|mdns|libwrap/i)
    (* redirect and cps aren't really lists, they take exactly two values *)
-   |attr_lst_eq ("server_args" | "log_type" |  "access_times" | "type"
-                | "flags" | "redirect" | "cps")
-   |attr_lst_op ( "log_on_success" | "log_on_failure"| "only_from"
-                | "no_access" | "env" | "passenv")
+   |attr_lst_eq (/server_args|log_type|access_times|type|flags|redirect|cps/i)
+   |attr_lst_op (/log_on_success|log_on_failure|only_from|no_access|env|passenv/i)
 
   let default_attr =
-    attr_one ( "instances" | "banner" | "bind" | "interface" | "per_source"
-             | "groups" | "banner_success" | "banner_fail" | "max_load"
-             | "v6only" | "umask" | "mdns")
-   |attr_lst_eq "cps"       (* really only two values, not a whole list *)
-   |attr_lst_op ( "log_type" | "log_on_success" | "log_on_failure" | "disabled"
-                | "no_access" | "only_from" | "passenv" | "enabled" )
+    attr_one (/instances|banner|bind|interface|per_source|groups/i
+      |/banner_success|banner_fail|max_load|v6only|umask|mdns/i)
+   |attr_lst_eq /cps/i       (* really only two values, not a whole list *)
+   |attr_lst_op (/log_type|log_on_success|log_on_failure|disabled/i
+      |/no_access|only_from|passenv|enabled/i)
 
   (* View: body
    *   Note:
@@ -86,9 +74,9 @@ module Xinetd =
    *       about how to write that down. The resulting regular expressions
    *       would simply be prohibitively large.
    *)
-  let body (attr:lens) = Util.del_str "\n{\n"
-                       . (empty|comment|attr)*
-                       . del /[ \t]*}[ \t]*\n/ "}\n"
+  let body (attr:lens) = Build.block_newlines
+                            (indent . attr . Util.eol)
+                            Util.comment
 
   (* View: includes
    *  Note:
@@ -98,16 +86,16 @@ module Xinetd =
    *   currently not possible, and implementing that has a good amount of
    *   hairy corner cases to consider.
    *)
-  let includes = [ key /include|includedir/
-                     . Util.del_ws_spc . store /[^ \t\n]+/ . eol ]
+  let includes =
+     Build.key_value_line /include(dir)?/ Sep.space (store Rx.no_spaces)
 
   let service =
      let sto_re = /[^# \t\n\/]+/ in
-     [ key "service" . Sep.space . store sto_re . body service_attr ]
+     Build.key_value_line "service" Sep.space (store sto_re . body service_attr)
 
-  let defaults = [ key "defaults" . del /[ \t]*/ "" . body default_attr ]
+  let defaults = [ key "defaults" . body default_attr . Util.eol ]
 
-  let lns = ( empty | comment | includes | defaults | service )*
+  let lns = ( Util.empty | Util.comment | includes | defaults | service )*
 
   let filter = incl "/etc/xinetd.d/*"
              . incl "/etc/xinetd.conf"

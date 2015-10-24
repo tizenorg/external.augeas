@@ -1,16 +1,18 @@
 Name:           augeas
-Version:        0.8.1
+Version:        1.3.0
 Release:        1%{?dist}
 Summary:        A library for changing configuration files
 
 Group:          System Environment/Libraries
 License:        LGPLv2+
 URL:            http://augeas.net/
-Source0:        http://augeas.net/download/%{name}-%{version}.tar.gz
+Source0:        http://download.augeas.net/%{name}-%{version}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
-BuildRequires:  readline-devel libselinux-devel
+BuildRequires:  readline-devel libselinux-devel libxml2-devel
 Requires:       %{name}-libs = %{version}-%{release}
+# Bundling exception for gnulib: https://fedorahosted.org/fpc/ticket/174
+Provides:       bundled(gnulib)
 
 %description
 A library for programmatically editing configuration files. Augeas parses
@@ -40,6 +42,10 @@ Group:          System Environment/Libraries
 %description    libs
 The libraries for %{name}.
 
+Augeas is a library for programmatically editing configuration files. It parses
+configuration files into a tree structure, which it exposes through its
+public API. Changes made through the API are written back to the initially
+read files.
 
 %prep
 %setup -q
@@ -48,10 +54,25 @@ The libraries for %{name}.
 %configure --disable-static
 make %{?_smp_mflags}
 
+%check
+# Disable test-preserve.sh SELinux testing. This fails when run under mock due
+# to differing SELinux labelling.
+export SKIP_TEST_PRESERVE_SELINUX=1
+
+make %{?_smp_mflags} check || {
+  echo '===== tests/test-suite.log ====='
+  cat tests/test-suite.log
+  exit 1
+}
+
 %install
 rm -rf $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT INSTALL="%{__install} -p"
 find $RPM_BUILD_ROOT -name '*.la' -exec rm -f {} ';'
+
+# The tests/ subdirectory contains lenses used only for testing, and
+# so it shouldn't be packaged.
+rm -r $RPM_BUILD_ROOT%{_datadir}/augeas/lenses/dist/tests
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -85,6 +106,23 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/pkgconfig/augeas.pc
 
 %changelog
+* Tue Oct 15 2013 Dominic Cleal <dcleal@redhat.com> - 1.1.0-2
+- Add %check stage to run make check (rjones@redhat.com)
+- Don't package lenses in tests/ subdirectory (rjones@redhat.com)
+- Fix source URL to download.augeas.net (RHBZ#996033)
+
+* Fri Jun 14 2013 David Lutterkort <lutter@watzmann.net> - 1.1.0-1
+- New version
+
+* Fri Dec 21 2012 David Lutterkort <lutter@redhat.com> - 1.0.0-1
+- New version
+
+* Fri Dec  2 2011 David Lutterkort <lutter@redhat.com> - 0.10.0-1
+- New version
+
+* Mon Jul 25 2011 David Lutterkort <lutter@redhat.com> - 0.9.0-1
+- New version
+
 * Fri Apr 15 2011 David Lutterkort <lutter@redhat.com> - 0.8.1-1
 - New version
 

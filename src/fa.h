@@ -1,7 +1,7 @@
 /*
  * fa.h: finite automata
  *
- * Copyright (C) 2007-2010 David Lutterkort
+ * Copyright (C) 2007-2011 David Lutterkort
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -254,6 +254,19 @@ int fa_is_nocase(struct fa *fa);
  */
 int fa_expand_nocase(const char *regexp, size_t regexp_len,
                      char **newregexp, size_t *newregexp_len);
+
+/* Generate up to LIMIT words from the language of FA, which is assumed to
+ * be finite. The words are returned in WORDS, which is allocated by this
+ * function and must be freed by the caller.
+ *
+ * If FA accepts the empty word, the empty string will be included in
+ * WORDS.
+ *
+ * Return the number of generated words on success, -1 if we run out of
+ * memory, and -2 if FA has more than LIMIT words.
+ */
+int fa_enumerate(struct fa *fa, int limit, char ***words);
+
 #endif
 
 

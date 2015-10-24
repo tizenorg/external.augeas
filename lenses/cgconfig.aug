@@ -7,7 +7,7 @@ Author:
     Raphael Pinson          <raphink@gmail.com>
 
 About: Licence
-    This file is licensed under the LGPLv2+, like the rest of Augeas.
+    This file is licensed under the LGPL v2+, like the rest of Augeas.
 
 About: Lens Usage
     Sample usage of this lens in augtool
@@ -26,12 +26,13 @@ module Cgconfig =
    let comment = Util.comment
    let empty   = Util.empty
 
-   let id        = /[a-zA-Z0-9_\-\/\.]+/
+   let id        = /[a-zA-Z0-9_\/.-]+/
    let name      = /[^#= \n\t{}\/]+/
-   let cont_name = /(cpuacct|cpu|devices|ns|cpuset|memory|freezer|net_cls)/
+   let cont_name = /(cpuacct|cpu|devices|ns|cpuset|memory|freezer|net_cls|blkio|hugetlb|perf_event)/
    let role_name = /(admin|task)/
    let id_name   = /(uid|gid)/
    let address   = /[^#; \n\t{}]+/
+   let qaddress  = address|/"[^#;"\n\t{}]+"/
 
    let lbracket = del /[ \t\n]*\{/ " {"
    let rbracket = del /[ \t]*\}/ "}"
@@ -77,7 +78,7 @@ module Cgconfig =
        |(a_info . ce . (t_info . ce)?))? in
      brack_entry_key "perm" perm_info_lns
 
-   let variable_setting = key_value name address
+   let variable_setting = key_value name qaddress
 
 (* controllers setting *)
    let controller_info =
@@ -87,7 +88,7 @@ module Cgconfig =
 
 (* group { ... } *)
    let group_data  =
-     let lnsa = key "group" . indent . store id in
+     let lnsa = key "group" . Util.del_ws_spc . store id in
      let lnsb = ( perm_info | controller_info | comment | empty )* in
      brack_entry_base lnsa lnsb
 

@@ -1,7 +1,7 @@
 /*
  * jmt.c: Earley parser for lenses based on Jim/Mandelbaum transducers
  *
- * Copyright (C) 2009-2010 David Lutterkort
+ * Copyright (C) 2009-2011 David Lutterkort
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -113,9 +113,10 @@ static int array_insert(struct array *arr, ind_t ind) {
 }
 
 static void array_release(struct array *arr) {
-    if (arr != NULL)
+    if (arr != NULL) {
         free(arr->data);
-    arr->used = arr->size = 0;
+        arr->used = arr->size = 0;
+    }
 }
 
 static void array_remove(struct array *arr, ind_t ind) {
@@ -297,15 +298,15 @@ static ind_t parse_add_item(struct jmt_parse *parse, ind_t j,
                             ind_t from_item, ind_t to_item,
                             ind_t caller) {
 
-    ensure(from_item == EPS || from_item < parse->sets[from_set]->items.used,
-           parse);
-    ensure(to_item == EPS || to_item < parse->sets[j]->items.used,
-           parse);
-
     int r;
     struct item_set *set = parse->sets[j];
     struct item *item = NULL;
     ind_t result = IND_MAX;
+
+    ensure(from_item == EPS || from_item < parse->sets[from_set]->items.used,
+           parse);
+    ensure(to_item == EPS || to_item < parse->sets[j]->items.used,
+           parse);
 
     if (set == NULL) {
         r = ALLOC(parse->sets[j]);

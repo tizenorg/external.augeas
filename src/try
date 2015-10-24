@@ -17,14 +17,16 @@ match /augeas/version
 EOF
 fi
 
-cat > $GDBCMDS <<EOF
-set annotate 3
+if [[ ! -f $GDBCMDS ]] ; then
+    cat > $GDBCMDS <<EOF
 run --nostdinc -I $AUGEAS_LENS_LIB -r $AUGEAS_ROOT < $AUGCMDS
 EOF
+fi
 
 cd $topdir/src
 if [[ "x$1" == "xgdb" ]] ; then
-    libtool --mode=execute gdb -x $GDBCMDS ./augtool
+    [[ -n "$EMACS" ]] && int="-i=mi"
+    exec libtool --mode=execute gdb $int -x $GDBCMDS ./augtool
 elif [[ "x$1" == "xstrace" ]] ; then
     libtool --mode=execute /usr/bin/strace ./augtool --nostdinc < $AUGCMDS
 elif [[ "x$1" == "xvalgrind" ]] ; then

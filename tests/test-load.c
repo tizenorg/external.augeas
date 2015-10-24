@@ -1,7 +1,7 @@
 /*
  * test-load.c: test the aug_load functionality
  *
- * Copyright (C) 2009 Red Hat Inc.
+ * Copyright (C) 2009-2011 Red Hat Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,6 +21,8 @@
  */
 
 #include <config.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "augeas.h"
 
@@ -38,10 +40,8 @@ static char *loadpath;
         exit(EXIT_FAILURE);                                         \
     } while(0)
 
-static struct augeas *setup_writable_hosts(CuTest *tc) {
+static char *setup_hosts(CuTest *tc) {
     char *etcdir, *build_root;
-    struct augeas *aug = NULL;
-    int r;
 
     if (asprintf(&build_root, "%s/build/test-load/%s",
                  abs_top_builddir, tc->name) < 0) {
@@ -51,11 +51,18 @@ static struct augeas *setup_writable_hosts(CuTest *tc) {
     if (asprintf(&etcdir, "%s/etc", build_root) < 0)
         CuFail(tc, "asprintf etcdir failed");
 
-    run(tc, "test -d %s && chmod -R u+w %s || :", build_root, build_root);
+    run(tc, "test -d %s && chmod -R u+rw %s || :", build_root, build_root);
     run(tc, "rm -rf %s", build_root);
     run(tc, "mkdir -p %s", etcdir);
     run(tc, "cp -pr %s/etc/hosts %s", root, etcdir);
-    run(tc, "chmod -R u+w %s", build_root);
+
+    free(etcdir);
+    return build_root;
+}
+
+static struct augeas *setup_hosts_aug(CuTest *tc, char *build_root) {
+    struct augeas *aug = NULL;
+    int r;
 
     aug = aug_init(build_root, loadpath, AUG_NO_MODL_AUTOLOAD);
     CuAssertPtrNotNull(tc, aug);
@@ -67,8 +74,19 @@ static struct augeas *setup_writable_hosts(CuTest *tc) {
     CuAssertRetSuccess(tc, r);
 
     free(build_root);
-    free(etcdir);
     return aug;
+}
+
+static struct augeas *setup_writable_hosts(CuTest *tc) {
+    char *build_root = setup_hosts(tc);
+    run(tc, "chmod -R u+w %s", build_root);
+    return setup_hosts_aug(tc, build_root);
+}
+
+static struct augeas *setup_unreadable_hosts(CuTest *tc) {
+    char *build_root = setup_hosts(tc);
+    run(tc, "chmod -R a-r %s/etc/hosts", build_root);
+    return setup_hosts_aug(tc, build_root);
 }
 
 static void testDefault(CuTest *tc) {
@@ -437,7 +455,8 @@ static void testReloadExternalMod(CuTest *tc) {
     r = aug_get(aug, "/augeas/root", &aug_root);
     CuAssertIntEquals(tc, 1, r);
 
-    run(tc, "sed -i -e '1,2d' %setc/hosts", aug_root);
+    run(tc, "sed -e '1,2d' %setc/hosts > %setc/hosts.new", aug_root, aug_root);
+    run(tc, "mv %setc/hosts.new %setc/hosts", aug_root, aug_root);
 
     /* Reload and save again */
     r = aug_load(aug);
@@ -451,6 +470,36 @@ static void testReloadExternalMod(CuTest *tc) {
 
     r = aug_match(aug, "/files/etc/hosts/*", NULL);
     CuAssertIntEquals(tc, 5, r);
+}
+
+/* Bug #259 - after save with /augeas/save = newfile, make sure we discard
+ * changes and reload files.
+ */
+static void testReloadAfterSaveNewfile(CuTest *tc) {
+    augeas *aug = NULL;
+    int r;
+
+    aug = setup_writable_hosts(tc);
+
+    r = aug_load(aug);
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_set(aug, "/augeas/save", "newfile");
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_set(aug, "/files/etc/hosts/1/ipaddr", "127.0.0.2");
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_save(aug);
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_load(aug);
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_match(aug, "/files/etc/hosts/1[ipaddr = '127.0.0.1']", NULL);
+    CuAssertIntEquals(tc, 1, r);
+
+    aug_close(aug);
 }
 
 /* Make sure parse errors from applying a lens to a file that does not
@@ -480,6 +529,80 @@ static void testParseErrorReported(CuTest *tc) {
     aug_close(aug);
 }
 
+/* Test failed file opening is reported, e.g. EACCES */
+static void testPermsErrorReported(CuTest *tc) {
+    if (getuid() == 0) {
+        puts("pending (testPermsErrorReported): can't test permissions under root account");
+        return;
+    }
+
+    augeas *aug = NULL;
+    int r;
+    const char *s;
+
+    aug = setup_unreadable_hosts(tc);
+
+    r = aug_load(aug);
+    CuAssertRetSuccess(tc, r);
+
+    r = aug_match(aug, "/files/etc/hosts", NULL);
+    CuAssertIntEquals(tc, 0, r);
+
+    r = aug_get(aug, "/augeas/files/etc/hosts/error", &s);
+    CuAssertIntEquals(tc, 1, r);
+    CuAssertStrEquals(tc, "read_failed", s);
+
+    r = aug_get(aug, "/augeas/files/etc/hosts/error/message", &s);
+    CuAssertIntEquals(tc, 1, r);
+}
+
+/* Test bug #252 - excl patterns have no effect when loading with a root */
+static void testLoadExclWithRoot(CuTest *tc) {
+    augeas *aug = NULL;
+    static const char *const cmds =
+        "set /augeas/context /augeas/load\n"
+        "set Hosts/lens Hosts.lns\n"
+        "set Hosts/incl /etc/hosts\n"
+        "set Fstab/lens Fstab.lns\n"
+        "set Fstab/incl /etc/ho*\n"
+        "set Fstab/excl /etc/hosts\n"
+        "load";
+    int r;
+
+    aug = aug_init(root, loadpath, AUG_NO_STDINC|AUG_NO_MODL_AUTOLOAD);
+    CuAssertPtrNotNull(tc, aug);
+
+    r = aug_srun(aug, stderr, cmds);
+    CuAssertIntEquals(tc, 7, r);
+
+    r = aug_match(aug, "/augeas//error", NULL);
+    CuAssertIntEquals(tc, 0, r);
+}
+
+/* Test excl patterns matching the end of a filename work, e.g. *.bak */
+static void testLoadTrailingExcl(CuTest *tc) {
+    augeas *aug = NULL;
+    static const char *const cmds =
+        "set /augeas/context /augeas/load/Shellvars\n"
+        "set lens Shellvars.lns\n"
+        "set incl /etc/sysconfig/network-scripts/ifcfg-lo*\n"
+        "set excl *.rpmsave\n"
+        "load";
+    int r;
+
+    aug = aug_init(root, loadpath, AUG_NO_STDINC|AUG_NO_MODL_AUTOLOAD);
+    CuAssertPtrNotNull(tc, aug);
+
+    r = aug_srun(aug, stderr, cmds);
+    CuAssertIntEquals(tc, 5, r);
+
+    r = aug_match(aug, "/augeas/files/etc/sysconfig/network-scripts/ifcfg-lo", NULL);
+    CuAssertIntEquals(tc, 1, r);
+
+    r = aug_match(aug, "/augeas/files/etc/sysconfig/network-scripts/ifcfg-lo.rpmsave", NULL);
+    CuAssertIntEquals(tc, 0, r);
+}
+
 int main(void) {
     char *output = NULL;
     CuSuite* suite = CuSuiteNew();
@@ -496,7 +619,11 @@ int main(void) {
     SUITE_ADD_TEST(suite, testReloadDeleted);
     SUITE_ADD_TEST(suite, testReloadDeletedMeta);
     SUITE_ADD_TEST(suite, testReloadExternalMod);
+    SUITE_ADD_TEST(suite, testReloadAfterSaveNewfile);
     SUITE_ADD_TEST(suite, testParseErrorReported);
+    SUITE_ADD_TEST(suite, testPermsErrorReported);
+    SUITE_ADD_TEST(suite, testLoadExclWithRoot);
+    SUITE_ADD_TEST(suite, testLoadTrailingExcl);
 
     abs_top_srcdir = getenv("abs_top_srcdir");
     if (abs_top_srcdir == NULL)

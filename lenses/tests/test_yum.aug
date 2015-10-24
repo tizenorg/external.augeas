@@ -1,3 +1,8 @@
+(*
+Module: Test_Yum
+  Provides unit tests and examples for the <Yum> lens.
+*)
+
 module Test_yum =
 
   let yum_simple = "[sec1]
@@ -73,8 +78,15 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-remi
   let cont = "[main]\nbaseurl=url1\n   url2 , url3\n   \n"
 
   test Yum.lns get yum_simple =
-    { "sec1" {} { "key" = "value" } }
-    { "sec-two" { "key1" = "value1" } {} { "key2" = "value2" } }
+  { "sec1"
+    { "#comment" = "comment" }
+    { "key" = "value" }
+  }
+  { "sec-two"
+    { "key1" = "value1" }
+    { "#comment" = "comment" }
+    { "key2" = "value2" }
+  }
 
   test Yum.lns put yum_conf after
       rm "main"
@@ -120,7 +132,7 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-remi
   test Yum.lns get "[repo]\nbaseurl=url1\nbaseurl=url2\n" = *
 
   (* This checks that we take the right branch in the section lens.     *)
-  test Yum.section get "[repo]\nname=A name\nbaseurl=url1\n" =
+  test Yum.record get "[repo]\nname=A name\nbaseurl=url1\n" =
     { "repo"
         { "name" = "A name" }
         { "baseurl" = "url1" } }
@@ -135,7 +147,7 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-remi
   { "fedora"
     { "name" = "Fedora $releasever - $basearch" }
     { "failovermethod" = "priority" }
-    {  }
+    { "#comment" = "baseurl=http://download.fedora.redhat.com/pub/fedora/linux/releases/$releasever/Everything/$basearch/os/" }
     { "mirrorlist" = "http://mirrors.fedoraproject.org/mirrorlist?repo=fedora-$releasever&arch=$basearch" }
     { "enabled" = "1" }
     { "gpgcheck" = "1" }
@@ -146,7 +158,7 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-remi
   { "fedora-debuginfo"
     { "name" = "Fedora $releasever - $basearch - Debug" }
     { "failovermethod" = "priority" }
-    {  }
+    { "#comment" = "baseurl=http://download.fedora.redhat.com/pub/fedora/linux/releases/$releasever/Everything/$basearch/debug/" }
     { "mirrorlist" = "http://mirrors.fedoraproject.org/mirrorlist?repo=fedora-debug-$releasever&arch=$basearch" }
     { "enabled" = "0" }
     { "gpgcheck" = "1" }
@@ -157,14 +169,13 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-remi
   { "fedora-source"
     { "name" = "Fedora $releasever - Source" }
     { "failovermethod" = "priority" }
-    {  }
+    { "#comment" = "baseurl=http://download.fedora.redhat.com/pub/fedora/linux/releases/$releasever/Everything/source/SRPMS/" }
     { "mirrorlist" = "http://mirrors.fedoraproject.org/mirrorlist?repo=fedora-source-$releasever&arch=$basearch" }
     { "enabled" = "0" }
     { "gpgcheck" = "1" }
     { "gpgkey" = "file:///etc/pki/rpm-gpg/RPM-GPG-KEY-fedora" }
     { "gpgkey" = "file:///etc/pki/rpm-gpg/RPM-GPG-KEY" }
   }
-
 
 
   test Yum.lns get yum_repo2 =
@@ -185,6 +196,31 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-remi
     { "gpgcheck" = "1" }
     { "gpgkey" = "file:///etc/pki/rpm-gpg/RPM-GPG-KEY-remi" }
   }
+
+  (* Test: Yum.lns
+      Check that we can parse an empty line, to fix test-save *)
+  test Yum.lns get "\n" = { }
+
+  (* Test: Yum.lns
+       Issue #45: allow spaces around equals sign *)
+  test Yum.lns get "[rpmforge]
+name = RHEL $releasever - RPMforge.net - dag
+baseurl = http://apt.sw.be/redhat/el6/en/$basearch/rpmforge\n" =
+    { "rpmforge"
+      { "name" = "RHEL $releasever - RPMforge.net - dag" }
+      { "baseurl" = "http://apt.sw.be/redhat/el6/en/$basearch/rpmforge" }
+    }
+
+  (* Test: Yum.lns
+       Issue #275: parse excludes as a list *)
+  test Yum.lns get "[epel]
+name=Extra Packages for Enterprise Linux 6 - $basearch
+exclude=ocs* clamav*
+" =
+    { "epel"
+      { "name" = "Extra Packages for Enterprise Linux 6 - $basearch" }
+      { "exclude" = "ocs*" }
+      { "exclude" = "clamav*" } }
 
 (* Local Variables: *)
 (* mode: caml       *)

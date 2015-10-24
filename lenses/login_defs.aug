@@ -5,7 +5,7 @@ Module: Login_defs
 Author: Erinn Looney-Triggs
 
 About: License
-  This file is licensed under the LGPLv2+, like the rest of Augeas.
+  This file is licensed under the LGPL v2+, like the rest of Augeas.
 
 About: Configuration files
    This lens applies to /etc/login.defs. See <filter>.
@@ -24,6 +24,6 @@ let record =
 let lns = (record | Util.comment | Util.empty) *
 
 (* View: filter *)
-let filter = incl "/etc/login.defs" . Util.stdexcl
+let filter = incl "/etc/login.defs"
 
 let xfm = transform lns filter

@@ -1,7 +1,7 @@
 /*
  * fa.c: finite automata
  *
- * Copyright (C) 2007-2010 David Lutterkort
+ * Copyright (C) 2007-2011 David Lutterkort
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -60,6 +60,10 @@ int fa_minimization_algorithm = FA_MIN_HOPCROFT;
  * fa_as_regexp, we store regexps on transitions in the re field of each
  * transition. TRANS_RE indicates that we do that, and is used by fa_dot to
  * produce proper graphs of an automaton transitioning on regexps.
+ *
+ * For case-insensitive regexps (nocase == 1), the FA never has transitions
+ * on uppercase letters [A-Z], effectively removing these letters from the
+ * alphabet.
  */
 struct fa {
     struct state *initial;
@@ -77,6 +81,7 @@ struct state {
     unsigned int  accept : 1;
     unsigned int  live : 1;
     unsigned int  reachable : 1;
+    unsigned int  visited : 1;   /* Used in various places to track progress */
     /* Array of transitions. The TUSED first entries are used, the array
        has allocated room for TSIZE */
     size_t        tused;
@@ -981,6 +986,8 @@ static struct state_set *fa_reverse(struct fa *fa) {
 
     /* Make new initial and final states */
     struct state *s = add_state(fa, 0);
+    E(s == NULL);
+
     fa->initial->accept = 1;
     set_initial(fa, s);
     for (int i=0; i < accept->used; i++) {
@@ -2290,7 +2297,7 @@ int fa_contains(struct fa *fa1, struct fa *fa2) {
     if (fa1 == fa2)
         return 1;
 
-    determinize(fa2, NULL);
+    F(determinize(fa2, NULL));
     sort_transition_intervals(fa1);
     sort_transition_intervals(fa2);
 
@@ -2342,6 +2349,34 @@ int fa_contains(struct fa *fa1, struct fa *fa2) {
     goto done;
 }
 
+static int add_crash_trans(struct fa *fa, struct state *s, struct state *crash,
+                           int min, int max) {
+    int result;
+
+    if (fa->nocase) {
+        /* Never transition on anything in [A-Z] */
+        if (min > 'Z' || max < 'A') {
+            result = add_new_trans(s, crash, min, max);
+        } else if (min >= 'A' && max <= 'Z') {
+            result = 0;
+        } else if (max <= 'Z') {
+            /* min < 'A' */
+            result = add_new_trans(s, crash, min, 'A' - 1);
+        } else if (min >= 'A') {
+            /* max > 'Z' */
+            result = add_new_trans(s, crash, 'Z' + 1, max);
+        } else {
+            /* min < 'A' && max > 'Z' */
+            result = add_new_trans(s, crash, min, 'A' - 1);
+            if (result == 0)
+                result = add_new_trans(s, crash, 'Z' + 1, max);
+        }
+    } else {
+        result = add_new_trans(s, crash, min, max);
+    }
+    return result;
+}
+
 static int totalize(struct fa *fa) {
     int r;
     struct state *crash = add_state(fa, 0);
@@ -2350,42 +2385,25 @@ static int totalize(struct fa *fa) {
     F(mark_reachable(fa));
     sort_transition_intervals(fa);
 
-    if (fa->nocase) {
-        r = add_new_trans(crash, crash, UCHAR_MIN, 'A' - 1);
-        if (r < 0)
-            return -1;
-        r = add_new_trans(crash, crash, 'Z' + 1, UCHAR_MAX);
-        if (r < 0)
-            return -1;
-    } else {
-        r = add_new_trans(crash, crash, UCHAR_MIN, UCHAR_MAX);
-        if (r < 0)
-            return -1;
-    }
+    r = add_crash_trans(fa, crash, crash, UCHAR_MIN, UCHAR_MAX);
+    if (r < 0)
+        return -1;
 
     list_for_each(s, fa->initial) {
         int next = UCHAR_MIN;
         int tused = s->tused;
         for (int i=0; i < tused; i++) {
             uchar min = s->trans[i].min, max = s->trans[i].max;
-            if (fa->nocase) {
-                /* Don't add transitions on [A-Z] into crash */
-                if (isupper(min)) min = 'A';
-                if (isupper(max)) max = 'Z';
-            }
             if (min > next) {
-                r = add_new_trans(s, crash, next, min - 1);
+                r = add_crash_trans(fa, s, crash, next, min - 1);
                 if (r < 0)
                     return -1;
             }
-            if (max + 1 > next) {
+            if (max + 1 > next)
                 next = max + 1;
-                if (fa->nocase && isupper(next))
-                    next = 'Z' + 1;
-            }
         }
         if (next <= UCHAR_MAX) {
-            r = add_new_trans(s, crash, next, UCHAR_MAX);
+            r = add_crash_trans(fa, s, crash, next, UCHAR_MAX);
             if (r < 0)
                 return -1;
         }
@@ -2547,8 +2565,10 @@ static struct re_str *string_extend(struct re_str *dst,
             dst = make_re_str(NULL);
         if (dst == NULL)
             return NULL;
-        if (REALLOC_N(dst->rx, slen+2) < 0)
+        if (REALLOC_N(dst->rx, slen+2) < 0) {
+            free(dst);
             return NULL;
+        }
         memcpy(dst->rx, src->rx, slen);
         dst->rx[slen] = c;
         dst->rx[slen + 1] = '\0';
@@ -2587,6 +2607,7 @@ int fa_example(struct fa *fa, char **example, size_t *example_len) {
     if (path == NULL || str == NULL)
         goto error;
     F(state_set_push_data(path, fa->initial, str));
+    str = NULL;
 
     /* List of states still to visit */
     worklist = state_set_init(-1, S_NONE);
@@ -2635,7 +2656,89 @@ int fa_example(struct fa *fa, char **example, size_t *example_len) {
     state_set_free(path);
     state_set_free(worklist);
     free_re_str(word);
+    free_re_str(str);
     return -1;
+}
+
+struct enum_intl {
+    int       limit;
+    int       nwords;
+    char    **words;
+    char     *buf;
+    size_t    bsize;
+};
+
+static int fa_enumerate_intl(struct state *s, struct enum_intl *ei, int pos) {
+    int result = -1;
+
+    if (ei->bsize <= pos + 1) {
+        ei->bsize *= 2;
+        F(REALLOC_N(ei->buf, ei->bsize));
+    }
+
+    ei->buf[pos] = '\0';
+    for_each_trans(t, s) {
+        if (t->to->visited)
+            return -2;
+        t->to->visited = 1;
+        for (int i=t->min; i <= t->max; i++) {
+            ei->buf[pos] = i;
+            if (t->to->accept) {
+                if (ei->nwords >= ei->limit)
+                    return -2;
+                ei->words[ei->nwords] = strdup(ei->buf);
+                E(ei->words[ei->nwords] == NULL);
+                ei->nwords += 1;
+            }
+            result = fa_enumerate_intl(t->to, ei, pos+1);
+            E(result < 0);
+        }
+        t->to->visited = 0;
+    }
+    ei->buf[pos] = '\0';
+    result = 0;
+ error:
+    return result;
+}
+
+int fa_enumerate(struct fa *fa, int limit, char ***words) {
+    struct enum_intl ei;
+    int result = -1;
+
+    *words = NULL;
+    MEMZERO(&ei, 1);
+    ei.bsize = 8;                    /* Arbitrary initial size */
+    ei.limit = limit;
+    F(ALLOC_N(ei.words, limit));
+    F(ALLOC_N(ei.buf, ei.bsize));
+
+    /* We use the visited bit to track which states we already visited
+     * during the construction of a word to detect loops */
+    list_for_each(s, fa->initial)
+        s->visited = 0;
+    fa->initial->visited = 1;
+    if (fa->initial->accept) {
+        if (ei.nwords >= limit)
+            return -2;
+        ei.words[0] = strdup("");
+        E(ei.words[0] == NULL);
+        ei.nwords = 1;
+    }
+    result = fa_enumerate_intl(fa->initial, &ei, 0);
+    E(result < 0);
+
+    result = ei.nwords;
+    *words = ei.words;
+    ei.words = NULL;
+ done:
+    free(ei.buf);
+    return result;
+
+ error:
+    for (int i=0; i < ei.nwords; i++)
+        free(ei.words[i]);
+    free(ei.words);
+    goto done;
 }
 
 /* Expand the automaton FA by replacing every transition s(c) -> p from
@@ -3012,6 +3115,10 @@ int fa_nocase(struct fa *fa) {
             } else if (t->max <= 'Z') {
                 /* t->min < 'A' */
                 t->max = 'A' - 1;
+                F(add_new_trans(s, t->to, lc_min, lc_max));
+            } else if (t->min >= 'A') {
+                /* t->max > 'Z' */
+                t->min = 'Z' + 1;
                 F(add_new_trans(s, t->to, lc_min, lc_max));
             } else {
                 /* t->min < 'A' && t->max > 'Z' */

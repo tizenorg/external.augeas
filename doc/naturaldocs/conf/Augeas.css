@@ -68,6 +68,7 @@ blockquote {
     padding: 0;
     margin: 0;
     overflow: auto;
+    margin-left: 5ex;
     }
 
 
@@ -105,7 +106,7 @@ blockquote {
     position: absolute;
     top: 0;
     left: 0;
-    width: 31ex;
+    width: 200px;
     overflow: hidden;
     }
 .ContentPage .Firefox #Menu,
@@ -405,8 +406,9 @@ blockquote {
 .Prototype {
     font: 10pt "Courier New", Courier, monospace;
     padding: 5px 3ex;
-    border-width: 1px; border-style: solid;
-    margin: 0 5ex 1.5em 5ex;
+    border: 1px solid #65A703;
+    margin: 0 5ex 1.5em 0;
+    background: #EBF8D5;
     }
 
     .Prototype td {
@@ -734,7 +736,6 @@ blockquote {
         }
 
 
-
 #Footer {
     font-size: 8pt;
     color: #989898;
@@ -763,3 +764,19 @@ blockquote {
     #Footer a:hover,
     #Footer a:visited { color: #989898 }
     #Footer a:active { color: #A00000 }
+
+.CAugeasLens td {
+    white-space: pre !important;
+}
+
+.CAugeasVariable td {
+    white-space: pre !important;
+}
+
+.CAugeasModule td {
+    white-space: pre !important;
+}
+
+.CAugeasTest td {
+    white-space: pre !important;
+}

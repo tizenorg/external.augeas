@@ -40,10 +40,17 @@ module Syslog =
 
 	(* View: comment
 	  Map comments into "#comment" nodes
-	  Can't use Util.comment as #+ and #! have a special meaning *)
+	  Can't use Util.comment as #+ and #! have a special meaning.
+      However, '# !' and '# +' have no special meaning so they should be allowed.
+     *)
+
+	let comment_gen (space:regexp) (sto:regexp) =
+          [ label "#comment" . del ("#" . space) "# " . store sto . eol ]
+
 	let comment =
-	  [ label "#comment" . del /#[ \t]*/ "# "
-	      . store /([^ \t\n+!-].*[^ \t\n]|[^ \t\n+!-])/ . eol ]
+		let comment_withsign = comment_gen Rx.space /([!+-].*[^ \t\n]|[!+-])/
+	 in let comment_nosign = comment_gen Rx.opt_space /([^ \t\n+!-].*[^ \t\n]|[^ \t\n+!-])/
+	 in comment_withsign | comment_nosign
 
 	(* Group: single characters macro *)
 
@@ -59,10 +66,6 @@ module Syslog =
 	 Deletes a semicolon and default to it
 	 *)
 	let semicolon  = sep_tab_opt . Util.del_str ";" . sep_tab_opt
-	(* Variable: at
-	 Deletes a at and default to it
-	 *)
-	let at         = Util.del_str "@"
 	(* Variable: dot
 	 Deletes a dot and default to it
 	 *)
@@ -101,20 +104,27 @@ module Syslog =
 	  *)
         let comparison = /(!|[<=>]+|![<=>]+)/
 
+	(* Variable: protocol
+	  @ means UDP
+    @@ means TCP
+	  *)
+        let protocol      = /@{1,2}/
+
 	(* Variable: token
 	  alphanum or "*"
 	  *)
-        let token      = /([a-z0-9]+|\*)/
+        let token      = /([A-Za-z0-9]+|\*)/
 
 	(* Variable: file_r
 	 a file begins with a / and get almost anything else after
 	 *)
-	let file_r     = /\/[^ \t\n]+/
+	let file_r     = /\/[^ \t\n;]+/
 
 	(* Variable: loghost_r
 	 Matches a hostname, that is labels speparated by dots, labels can't
 	 start or end with a "-".  maybe a bit too complicated for what it's worth *)
-	let loghost_r = /[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*/
+	let loghost_r = /[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*/ |
+                    "[" . Rx.ipv6 . "]"
 
 	(* Group: Function *)
 
@@ -175,7 +185,7 @@ module Syslog =
 	(* View: loghost
 	 a loghost is an @  sign followed by the hostname and a possible port
 	 *)
-	let loghost = at . [ label "hostname" . store loghost_r ] .
+	let loghost = [label "protocol" . store protocol] . [ label "hostname" . store loghost_r ] .
 	    (colon . [ label "port" . store /[0-9]+/ ] )?
 
 	(* View: users

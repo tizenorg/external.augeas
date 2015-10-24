@@ -1,13 +1,13 @@
 module Test_pam =
 
   let example = "#%PAM-1.0
-auth [user_unknown=ignore success=ok ignore=ignore default=bad] pam_securetty.so
+AUTH [user_unknown=ignore success=ok ignore=ignore default=bad] pam_securetty.so
 session    optional     pam_keyinit.so force revoke
 "
 
   test Pam.lns get example =
     { "#comment" = "%PAM-1.0" }
-    { "1" { "type" = "auth" }
+    { "1" { "type" = "AUTH" }
           { "control" = "[user_unknown=ignore success=ok ignore=ignore default=bad]" }
           { "module" = "pam_securetty.so" } }
     { "2" { "type" = "session" }
@@ -19,7 +19,7 @@ session    optional     pam_keyinit.so force revoke
   test Pam.lns put example after
     set "/1/control" "requisite"
   = "#%PAM-1.0
-auth requisite pam_securetty.so
+AUTH requisite pam_securetty.so
 session    optional     pam_keyinit.so force revoke
 "
 
@@ -39,6 +39,14 @@ session    optional     pam_keyinit.so force revoke
       { "type" = "password" }
       { "control" = "optional" }
       { "module" = "pam_gnome_keyring.so" }
+    }
+
+  test Pam.lns get "session    optional    pam_motd.so [motd=/etc/bad example]\n" =
+    { "1"
+      { "type" = "session" }
+      { "control" = "optional" }
+      { "module" = "pam_motd.so" }
+      { "argument" = "[motd=/etc/bad example]" }
     }
 
 (* Local Variables: *)

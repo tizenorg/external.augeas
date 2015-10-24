@@ -1,6 +1,20 @@
 module Test_logrotate =
 
-   let conf = "# see man logrotate for details
+test Logrotate.body get "\n{\n monthly\n}" =
+  { "schedule" = "monthly" }
+
+test Logrotate.rule get "/var/log/foo\n{\n monthly\n}\n" =
+  { "rule"
+    { "file" = "/var/log/foo" }
+    { "schedule" = "monthly" } }
+
+test Logrotate.rule get "/var/log/foo /var/log/bar\n{\n monthly\n}\n" =
+  { "rule"
+    { "file" = "/var/log/foo" }
+    { "file" = "/var/log/bar" }
+    { "schedule" = "monthly" } }
+
+let conf = "# see man logrotate for details
 # rotate log files weekly
 weekly
 
@@ -59,9 +73,35 @@ include /etc/logrotate.d
                 fi
         endscript
 }
+/var/log/mailman/digest {
+    su root list
+    monthly
+    missingok
+    create 0664 list list
+    rotate 4
+    compress
+    delaycompress
+        sharedscripts
+        postrotate
+            [ -f '/var/run/mailman/mailman.pid' ] && /usr/lib/mailman/bin/mailmanctl -q reopen || exit 0
+        endscript
+}
+/var/log/ntp {
+    compress
+    dateext
+    maxage 365
+    rotate 99
+    size=+2048k
+    notifempty
+    missingok
+    copytruncate
+    postrotate
+        chmod 644 /var/log/ntp
+    endscript
+}
 "
 
-   test Logrotate.lns get conf =
+test Logrotate.lns get conf =
       { "#comment" = "see man logrotate for details" }
       { "#comment" = "rotate log files weekly" }
       { "schedule" = "weekly" }
@@ -105,7 +145,7 @@ include /etc/logrotate.d
            { "rotate" = "1" } }
       { "rule"
            { "file"      = "/var/log/vsftpd.log" }
-           { "#comment"   = "ftpd doesn't handle SIGHUP properly" }
+           { "#comment"  = "ftpd doesn't handle SIGHUP properly" }
            { "compress"  = "nocompress" }
            { "missingok" = "missingok" }
            { "ifempty"   = "notifempty" }
@@ -128,38 +168,65 @@ include /etc/logrotate.d
            { "prerotate" = "                if [ -f /var/run/apache2.pid ]; then
                         /etc/init.d/apache2 restart > /dev/null
                 fi" } }
+      { "rule"
+           { "file" = "/var/log/mailman/digest" }
+           { "su"
+               { "owner" = "root" }
+               { "group" = "list" } }
+           { "schedule"  = "monthly" }
+           { "missingok" = "missingok" }
+           { "create"
+               { "mode"  = "0664" }
+               { "owner" = "list" }
+               { "group" = "list" } }
+           { "rotate"        = "4" }
+           { "compress"      = "compress" }
+           { "delaycompress" = "delaycompress" }
+           { "sharedscripts" = "sharedscripts" }
+           { "postrotate"    = "            [ -f '/var/run/mailman/mailman.pid' ] && /usr/lib/mailman/bin/mailmanctl -q reopen || exit 0" } }
+      { "rule"
+           { "file" = "/var/log/ntp" }
+           { "compress" = "compress" }
+           { "dateext" = "dateext" }
+           { "maxage" = "365" }
+           { "rotate" = "99" }
+           { "size" = "+2048k" }
+           { "ifempty" = "notifempty" }
+           { "missingok" = "missingok" }
+           { "copytruncate" = "copytruncate" }
+           { "postrotate" = "        chmod 644 /var/log/ntp" } }
 
-  test Logrotate.lns get "/var/log/file {\n dateext\n}\n" =
+test Logrotate.lns get "/var/log/file {\n dateext\n}\n" =
     { "rule"
       { "file" = "/var/log/file" }
       { "dateext" = "dateext" } }
 
   (* Make sure 'minsize 1M' works *)
-  test Logrotate.lns get "/avr/log/wtmp {\n minsize 1M\n}\n" =
+test Logrotate.lns get "/avr/log/wtmp {\n minsize 1M\n}\n" =
   { "rule"
       { "file" = "/avr/log/wtmp" }
       { "minsize" = "1M" } }
 
   (* '=' is a legal separator, file names can be indented *)
-   test Logrotate.lns get " \t /file {\n size=5M\n}\n" =
+test Logrotate.lns get " \t /file {\n size=5M\n}\n" =
      { "rule"
          { "file" = "/file" }
          { "size" = "5M" } }
 
   (* Can leave owner/group off a create statement *)
-  test Logrotate.lns get "/file {
+test Logrotate.lns get "/file {
 	create 600\n}\n" =
      { "rule"
          { "file" = "/file" }
          { "create"
              { "mode" = "600" } } }
 
-  test Logrotate.lns put "/file {\n	create 600\n}\n" after
+test Logrotate.lns put "/file {\n	create 600\n}\n" after
     set "/rule/create/owner" "user"
   = "/file {\n	create 600 user\n}\n"
 
   (* The newline at the end of a script is optional *)
-  test Logrotate.lns put "/file {\n size=5M\n}\n" after
+test Logrotate.lns put "/file {\n size=5M\n}\n" after
     set "/rule/prerotate" "\tfoobar"
   =
 "/file {
@@ -168,7 +235,7 @@ include /etc/logrotate.d
 \tfoobar
 \tendscript\n}\n"
 
-  test Logrotate.lns put "/file {\n size=5M\n}\n" after
+test Logrotate.lns put "/file {\n size=5M\n}\n" after
     set "/rule/prerotate" "\tfoobar\n"
   =
 "/file {

@@ -2,6 +2,7 @@
 module Test_OpenVPN =
 
 let server_conf = "
+daemon
 local 10.0.5.20
 port 1194
 # TCP or UDP server?
@@ -20,7 +21,9 @@ dh dh1024.pem
 server 10.8.0.0 255.255.255.0
 ifconfig-pool-persist ipp.txt
 
+client-config-dir /etc/openvpn/ccd
 server-bridge 10.8.0.4 255.255.255.0 10.8.0.50 10.8.0.100
+route 10.9.0.0 255.255.255.0
 push \"route 192.168.10.0 255.255.255.0\"
 learn-address ./script
 push \"redirect-gateway\"
@@ -44,10 +47,14 @@ log         openvpn.log
 log-append  openvpn.log
 verb 3
 mute 20
+management 10.0.5.20 1193 /etc/openvpn/mpass
+script-security 3 system
+mssfix 1300
 "
 
 test OpenVPN.lns get server_conf =
   {}
+  { "daemon" }
   { "local"    = "10.0.5.20" }
   { "port"     = "1194" }
   { "#comment" = "TCP or UDP server?" }
@@ -69,11 +76,15 @@ test OpenVPN.lns get server_conf =
       { "netmask" = "255.255.255.0" } }
   { "ifconfig-pool-persist" = "ipp.txt" }
   {}
+  { "client-config-dir" = "/etc/openvpn/ccd" }
   { "server-bridge"
       { "address" = "10.8.0.4" }
       { "netmask" = "255.255.255.0" }
       { "start"   = "10.8.0.50" }
       { "end"     = "10.8.0.100" } }
+  { "route"
+      { "address" = "10.9.0.0" }
+      { "netmask" = "255.255.255.0" } }
   { "push" = "route 192.168.10.0 255.255.255.0" }
   { "learn-address" = "./script" }
   { "push" = "redirect-gateway" }
@@ -103,6 +114,12 @@ test OpenVPN.lns get server_conf =
   { "log-append"  = "openvpn.log" }
   { "verb"        = "3" }
   { "mute"        = "20" }
+  { "management"
+      { "server"  = "10.0.5.20" }
+      { "port"	  = "1193" }
+      { "pwfile"  = "/etc/openvpn/mpass" } }
+  { "script-security" = "3 system" }
+  { "mssfix" = "1300" }
 
 
 
@@ -119,6 +136,7 @@ http-proxy mytest2
 http-proxy
 mute-replay-warnings
 ns-cert-type server
+mssfix 1350
 "
 
 test OpenVPN.lns get client_conf =
@@ -141,5 +159,6 @@ test OpenVPN.lns get client_conf =
   { "http-proxy" }
   { "mute-replay-warnings" }
   { "ns-cert-type" = "server" }
+  { "mssfix" = "1350" }
 
 

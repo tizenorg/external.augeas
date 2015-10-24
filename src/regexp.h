@@ -1,7 +1,7 @@
 /*
  * regexp.h: wrappers for regexp handling
  *
- * Copyright (C) 2009-2010 David Lutterkort
+ * Copyright (C) 2009-2011 David Lutterkort
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -41,6 +41,12 @@ void print_regexp(FILE *out, struct regexp *regexp);
  */
 struct regexp *make_regexp(struct info *info, char *pat, int nocase);
 
+/* Make a regexp with pattern PAT, which is copied. Ownership of INFO is
+ * taken. Escape sequences like \n in PAT are interpreted.
+ */
+struct regexp *make_regexp_unescape(struct info *info, const char *pat,
+                                    int nocase);
+
 /* Return 1 if R is an empty pattern, i.e. one consisting of nothing but
    '(' and ')' characters, 0 otherwise */
 int regexp_is_empty_pattern(struct regexp *r);
@@ -49,6 +55,9 @@ int regexp_is_empty_pattern(struct regexp *r);
  * is not used by the returned rgexp and must be freed by the caller
  */
 struct regexp *make_regexp_literal(struct info *info, const char *text);
+
+/* Make a regexp from a glob pattern */
+struct regexp *make_regexp_from_glob(struct info *info, const char *glob);
 
 /* Do not call directly, use UNREF instead */
 void free_regexp(struct regexp *regexp);

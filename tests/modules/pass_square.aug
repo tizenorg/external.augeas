@@ -8,17 +8,24 @@ let dels (s:string) = del s s
  *************************************************************************)
 
 (* Simplest square lens *)
-let s = store /[yz]/
-let sqr0 = [ square "x" s ] *
-test sqr0 get "xyxxyxxyx" = { "x" = "y" }{ "x" = "y" }{ "x" = "y" }
-test sqr0 put "xyx" after set "/x[3]" "z" = "xyxxzx"
+let s = store /[ab]/
+let sqr0 =
+	let k = key "x" in
+	let d = dels "x" in
+	[ square k s d ] *
+test sqr0 get "xaxxbxxax" = { "x" = "a" }{ "x" = "b" }{ "x" = "a" }
+test sqr0 put "xax" after set "/x[3]" "b" = "xaxxbx"
 
 (* test mismatch tag *)
 test sqr0 get "xya" = *
 
 (* Test regular expression matching with multiple groups *)
 let body = del /([f]+)([f]+)/ "ff" . del /([g]+)([g]+)/ "gg"
-let sqr1 = [ square /([a-b]*)([a-b]*)([a-b]*)/ body . del /([x]+)([x]+)/ "xx" ] *
+let sqr1 =
+	let k = key /([a-b]*)([a-b]*)([a-b]*)/ in
+	let d1 = del /([a-b]*)([a-b]*)([a-b]*)/ "a" in
+	let d2 = del /([x]+)([x]+)/ "xx" in
+	[ square k body d1 . d2 ] *
 
 test sqr1 get "aaffggaaxxbbffggbbxx" = { "aa" }{ "bb" }
 test sqr1 get "affggaxx" = { "a" }
@@ -26,10 +33,12 @@ test sqr1 put "affggaxx" after clear "/b" = "affggaxxbffggbxx"
 
 (* Test XML like elements up to depth 2 *)
 let b = del ">" ">" . del /[a-z ]*/ "" . del "</" "</"
-let xml = [ del "<" "<" . square /[a-z]+/ b . del ">" ">" ] *
+let open_tag = key /[a-z]+/
+let close_tag = del /[a-z]+/ "a"
+let xml = [ del "<" "<" . square open_tag b close_tag . del ">" ">" ] *
 
 let b2 = del ">" ">" . xml . del "</" "</"
-let xml2 = [ del "<" "<" . square /[a-z]+/ b2 . del ">" ">" ] *
+let xml2 = [ del "<" "<" . square open_tag b2 close_tag . del ">" ">" ] *
 
 test xml get "<a></a><b></b>" = { "a" }{ "b" }
 
@@ -49,66 +58,65 @@ test xml2 put "<a></a>" after clear "/x/y" = "<a></a><x><y></y></x>"
 (* test nested put of depth 3 : should fail *)
 test xml2 put "<a></a>" after clear "/x/y/z" = *
 
-(************************************************************************
- *                        Recursive square lens
- *************************************************************************)
+(* matches can be case-insensitive *)
+let s5 = store /[yz]/
+let sqr5 =
+	let k = key /x/i in
+	let d = del /x/i "x" in
+	[ square k s5 d ] *
+test sqr5 get "xyX" = { "x" = "y" }
+test sqr5 get "xyXXyxXyx" = { "x" = "y" }{ "X" = "y" }{ "X" = "y" }
+test sqr5 put "xyX" after set "/x[3]" "z" = "xyxxzx"
 
-(* Basic element *)
-let xml_element (body:lens) =
-    let g = del ">" ">" . body . del "</" "</" in
-        [ del "<" "<" . square /[a-z]+/ g . del ">" ">" ] *
+(* test concat multiple squares *)
+let rex = /[a-z]/
+let csqr =
+	let k = key rex in
+	let d = del rex "a" in
+	let e = dels "" in
+	[ square k e d . square d e d ] *
 
-let rec xml_rec = xml_element xml_rec
+test csqr get "aabbccdd" = { "a" } { "c" }
+test csqr put "aabb" after insa "z" "/a" = "aabbzzaa"
 
-test xml_rec get "<a><b><c><d><e></e></d></c></b></a>" =
-  { "a"
-    { "b"
-      { "c"
-        { "d"
-          { "e" }
-        }
-      }
-    }
-  }
+(* test default square create values *)
+let create_square =
+	let d = dels "a" in
+	[ key "x" . square d d d ]*
 
-test xml_rec get "<a><b></b><c></c><d></d><e></e></a>" =
-  { "a"
-    { "b" }
-    { "c" }
-    { "d" }
-    { "e" }
-  }
+test create_square put "" after clear "/x" = "xaaa"
 
-test xml_rec put "<a></a><b><c></c></b>" after clear "/x/y/z" = "<a></a><b><c></c></b><x><y><z></z></y></x>"
+(* test optional quotes *)
+let word = /[A-Za-z0-9_.-]+/
+let entry =
+  let k = key word in
+  let quote = del /"?/ "\"" (* " *) in
+  let body = store /[a-z]+/ in
+  let v = square quote body quote in
+  [ k . dels "=" . v ]
 
-(* mismatch tag *)
-test xml_rec get "<a></c>" = *
-test xml_rec get "<a><b></b></c>" = *
-test xml_rec get "<a><b></c></a>" = *
+test entry get "key=\"value\"" = { "key" = "value" }
+test entry get "key=value" = { "key" = "value" }
 
-(* test ctype_nullable and typecheck *)
-let rec z = [ square "ab" z? ]
-test z get "abab" = { "ab" }
+test entry put "key=value" after
+  set "/key" "other" = "key=other"
 
-(* test tip handling when using store inside body *)
-let c (body:lens) =
-    let sto = store "c" . body* in
-        [ square "ab" sto ]
+test entry put "key=\"value\"" after
+  set "/key" "other" = "key=\"other\""
 
-let rec cc = c cc
+(* create with square *)
+(* Passing this test successfully requires that the skeleton from the get *)
+(* is correctly detected as not matching the skeleton for the second lens *)
+(* in hte union - the reason for the mismatch is that the quote is        *)
+(* optional in the first branch of the union, and the skeleton therefore  *)
+(* does not have "@" in the right places, triggering a create             *)
+let sq_create =
+  let word = store /[a-z]+/ in
+  let number = store /[0-9]+/ in
+  let quot = dels "@" in
+  let quot_opt = del /@?/ "@" in
+    [ label "t" . square quot_opt word quot_opt ]
+  | [ label "t" . square quot number quot ]
 
-test cc get "abcabcabab" =
-  { "ab" = "c"
-    { "ab" = "c" }
-  }
-
-(* test correct put behavior *)
-let input3 = "aaxyxbbaaaxyxbb"
-let b3 = dels "y"
-let sqr3 = [ del /[a]*/ "a" . square /[x]/ b3 . del /[b]*/ "b" ]*
-test sqr3 get input3 = { "x" }{ "x" }
-test sqr3 put input3 after clear "/x[1]" = input3
-
-let b4 = del "x" "x"
-let rec sqr4 = [ del /[a]+/ "a" . square /[b]|[c]/ (b4|sqr4) ]
-test sqr4 put "aabaaacxcb" after rm "x" = "aabaaacxcb"
+test sq_create put "abc" after
+  set "/t" "42" = "@42@"

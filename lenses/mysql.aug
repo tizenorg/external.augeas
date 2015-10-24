@@ -14,10 +14,13 @@ let comment  = IniFile.comment IniFile.comment_re "#"
 
 let sep      = IniFile.sep IniFile.sep_re IniFile.sep_default
 
-let entry    = [ key IniFile.entry_re . sep . IniFile.sto_to_comment . (comment|IniFile.eol) ] | 
-               [ key IniFile.entry_re . store // . (comment|IniFile.eol) ] | 
-               [ key /\![A-Za-z][A-Za-z0-9\._-]+/ . del / / " " . store /\/[A-Za-z0-9\.\/_-]+/ . (comment|IniFile.eol) ] |
-               comment
+let entry    =
+     let bare = Quote.do_dquote_opt_nil (store /[^#;" \t\r\n]+([ \t]+[^#;" \t\r\n]+)*/)
+  in let quoted = Quote.do_dquote (store /[^"\r\n]*[#;]+[^"\r\n]*/)
+  in [ Util.indent . key IniFile.entry_re . sep . Sep.opt_space . bare . (comment|IniFile.eol) ]
+   | [ Util.indent . key IniFile.entry_re . sep . Sep.opt_space . quoted . (comment|IniFile.eol) ]
+   | [ Util.indent . key IniFile.entry_re . store // .  (comment|IniFile.eol) ]
+   | comment
 
 (************************************************************************
  * sections, led by a "[section]" header
@@ -30,12 +33,14 @@ let entry    = [ key IniFile.entry_re . sep . IniFile.sto_to_comment . (comment|
 let title   = IniFile.indented_title_label "target" IniFile.record_label_re
 let record  = IniFile.record title entry
 
-let lns    = IniFile.lns record comment
+let includedir = Build.key_value_line /!include(dir)?/ Sep.space (store Rx.fspath)
+               . (comment|IniFile.empty)*
+
+let lns    = (comment|IniFile.empty)* . (record|includedir)*
 
 let filter = (incl "/etc/mysql/my.cnf")
              . (incl "/etc/mysql/conf.d/*.cnf")
              . (incl "/etc/my.cnf")
-             . Util.stdexcl
 
 let xfm = transform lns filter
 

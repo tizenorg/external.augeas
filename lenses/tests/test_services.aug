@@ -48,6 +48,15 @@ z39.50		210/tcp		z3950 wais	# NISO Z39.50 database \n"
        { "port"     = "1911" }
        { "protocol" = "tcp" } }
 
+  (* And comments with one space in *)
+  test Services.lns get "mtp\t\t\t1911/tcp\t\t\t# \nfoo 123/tcp\n" =
+    { "service-name" = "mtp"
+       { "port"     = "1911" }
+       { "protocol" = "tcp" } }
+    { "service-name" = "foo"
+       { "port"     = "123" }
+       { "protocol" = "tcp" } }
+
   test Services.lns get "sql*net\t\t66/tcp\t\t\t# Oracle SQL*NET\n" =
     { "service-name" = "sql*net"
        { "port"     = "66" }
@@ -63,3 +72,17 @@ z39.50		210/tcp		z3950 wais	# NISO Z39.50 database \n"
   test Services.lns put "tcpmux          1/tcp # some comment\n"
     after rm "/service-name/#comment" = "tcpmux          1/tcp\n"
 
+  (* On AIX, port ranges are valid *)
+  test Services.lns get "x11                      6000-6063/tcp  # X Window System\n" =
+    { "service-name" = "x11"
+      { "start" = "6000" }
+      { "end" = "6063" }
+      { "protocol" = "tcp" }
+      { "#comment" = "X Window System" } }
+
+  (* Colons permitted in service names, RHBZ#1121263 *)
+  test Services.lns get "SWRPC.ACCESS.BSS:BS_rmq  48102/tcp  # SWIFTAlliance_SWRPC ACCESS\n" =
+    { "service-name" = "SWRPC.ACCESS.BSS:BS_rmq"
+      { "port" = "48102" }
+      { "protocol" = "tcp" }
+      { "#comment" = "SWIFTAlliance_SWRPC ACCESS" } }

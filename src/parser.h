@@ -1,9 +1,8 @@
-/* A Bison parser, made by GNU Bison 2.4.3.  */
+/* A Bison parser, made by GNU Bison 2.5.  */
 
-/* Skeleton interface for Bison's Yacc-like parsers in C
+/* Bison interface for Yacc-like parsers in C
    
-      Copyright (C) 1984, 1989, 1990, 2000, 2001, 2002, 2003, 2004, 2005, 2006,
-   2009, 2010 Free Software Foundation, Inc.
+      Copyright (C) 1984, 1989-1990, 2000-2011 Free Software Foundation, Inc.
    
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -85,7 +84,7 @@
 typedef union YYSTYPE
 {
 
-/* Line 1685 of yacc.c  */
+/* Line 2068 of yacc.c  */
 #line 89 "parser.y"
 
   struct term    *term;
@@ -102,8 +101,8 @@ typedef union YYSTYPE
 
 
 
-/* Line 1685 of yacc.c  */
-#line 107 "parser.h"
+/* Line 2068 of yacc.c  */
+#line 106 "parser.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
@@ -129,7 +128,7 @@ typedef struct YYLTYPE
 
 /* "%code provides" blocks.  */
 
-/* Line 1685 of yacc.c  */
+/* Line 2068 of yacc.c  */
 #line 46 "parser.y"
 
 #include "info.h"
@@ -143,5 +142,5 @@ struct state {
 
 
 
-/* Line 1685 of yacc.c  */
-#line 148 "parser.h"
+/* Line 2068 of yacc.c  */
+#line 147 "parser.h"

@@ -1,7 +1,7 @@
 /*
  * regexp.c:
  *
- * Copyright (C) 2007-2010 David Lutterkort
+ * Copyright (C) 2007-2011 David Lutterkort
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -50,13 +50,13 @@ char *regexp_escape(const struct regexp *r) {
     ret = fa_restrict_alphabet(r->pattern->str, strlen(r->pattern->str),
                                &nre, &nre_len, 2, 1);
     if (ret == 0) {
-        pat = escape(nre, nre_len);
+        pat = escape(nre, nre_len, RX_ESCAPES);
         free(nre);
     }
 #endif
 
     if (pat == NULL)
-        pat = escape(r->pattern->str, -1);
+        pat = escape(r->pattern->str, -1, RX_ESCAPES);
 
     if (pat == NULL)
         return NULL;
@@ -113,6 +113,15 @@ void print_regexp(FILE *out, struct regexp *r) {
         fputc('i', out);
 }
 
+struct regexp *
+make_regexp_unescape(struct info *info, const char *pat, int nocase) {
+    char *p = unescape(pat, strlen(pat), NULL);
+
+    if (p == NULL)
+        return NULL;
+    return make_regexp(info, p, nocase);
+}
+
 struct regexp *make_regexp(struct info *info, char *pat, int nocase) {
     struct regexp *regexp;
 
@@ -123,6 +132,57 @@ struct regexp *make_regexp(struct info *info, char *pat, int nocase) {
     regexp->pattern->str = pat;
     regexp->nocase = nocase;
     return regexp;
+}
+
+/* Take a POSIX glob and turn it into a regexp. The regexp is constructed
+ * by doing the following translations of characters in the string:
+ *  * -> [^/]*
+ *  ? -> [^/]
+ *  leave characters escaped with a backslash alone
+ *  escape any of ".|{}()+^$" with a backslash
+ *
+ * Note that that ignores some of the finer points of globs, like
+ * complementation.
+ */
+struct regexp *make_regexp_from_glob(struct info *info, const char *glob) {
+    static const char *const star = "[^/]*";
+    static const char *const qmark = "[^/]";
+    static const char *const special = ".|{}()+^$";
+    int newlen = strlen(glob);
+    char *pat = NULL;
+
+    for (const char *s = glob; *s; s++) {
+        if (*s == '\\' && *(s+1))
+            s += 1;
+        else if (*s == '*')
+            newlen += strlen(star)-1;
+        else if (*s == '?')
+            newlen += strlen(qmark)-1;
+        else if (strchr(special, *s) != NULL)
+            newlen += 1;
+    }
+
+    if (ALLOC_N(pat, newlen + 1) < 0)
+        return NULL;
+
+    char *t = pat;
+    for (const char *s = glob; *s; s++) {
+        if (*s == '\\' && *(s+1)) {
+            *t++ = *s++;
+            *t++ = *s;
+        } else if (*s == '*') {
+            t = stpcpy(t, star);
+        } else if (*s == '?') {
+            t = stpcpy(t, qmark);
+        } else if (strchr(special, *s) != NULL) {
+            *t++ = '\\';
+            *t++ = *s;
+        } else {
+            *t++ = *s;
+        }
+    }
+
+    return make_regexp(info, pat, 0);
 }
 
 void free_regexp(struct regexp *regexp) {
@@ -177,10 +237,11 @@ regexp_union(struct info *info, struct regexp *r1, struct regexp *r2) {
 }
 
 char *regexp_expand_nocase(struct regexp *r) {
-    const char *p = r->pattern->str;
+    const char *p = r->pattern->str, *t;
     char *s = NULL;
     size_t len;
     int ret;
+    int psub = 0, rsub = 0;
 
     if (! r->nocase)
         return strdup(p);
@@ -188,8 +249,48 @@ char *regexp_expand_nocase(struct regexp *r) {
     ret = fa_expand_nocase(p, strlen(p), &s, &len);
     ERR_NOMEM(ret == REG_ESPACE, r->info);
     BUG_ON(ret != REG_NOERROR, r->info, NULL);
+
+    /* Make sure that r->pattern->str and ret have the same number
+     * of parentheses/groups, since our parser critically depends
+     * on the fact that the regexp for a union/concat and those
+     * of its children have groups that are in direct relation */
+    for (t = p; *t; t++) if (*t == '(') psub += 1;
+    for (t = s; *t; t++) if (*t == '(') rsub += 1;
+    BUG_ON(psub < rsub, r->info, NULL);
+    psub -= rsub;
+    if (psub > 0) {
+        char *adjusted = NULL, *a;
+        if (ALLOC_N(adjusted, strlen(s) + 2*psub + 1) < 0)
+            ERR_NOMEM(true, r->info);
+        a = adjusted;
+        for (int i=0; i < psub; i++) *a++ = '(';
+        a = stpcpy(a, s);
+        for (int i=0; i < psub; i++) *a++ = ')';
+        free(s);
+        s = adjusted;
+    }
  error:
     return s;
+}
+
+static char *append_expanded(struct regexp *r, char **pat, char *p,
+                             size_t *len) {
+    char *expanded = NULL;
+    size_t ofs = p - *pat;
+    int ret;
+
+    expanded = regexp_expand_nocase(r);
+    ERR_BAIL(r->info);
+
+    *len += strlen(expanded) - strlen(r->pattern->str);
+
+    ret = REALLOC_N(*pat, *len);
+    ERR_NOMEM(ret < 0, r->info);
+
+    p = stpcpy(*pat + ofs, expanded);
+ error:
+    FREE(expanded);
+    return p;
 }
 
 struct regexp *
@@ -197,7 +298,6 @@ regexp_union_n(struct info *info, int n, struct regexp **r) {
     size_t len = 0;
     char *pat = NULL, *p, *expanded = NULL;
     int nnocase = 0, npresent = 0;
-    int ret;
 
     for (int i=0; i < n; i++)
         if (r[i] != NULL) {
@@ -224,14 +324,8 @@ regexp_union_n(struct info *info, int n, struct regexp **r) {
             *p++ = '|';
         *p++ = '(';
         if (mixedcase && r[i]->nocase) {
-            expanded = regexp_expand_nocase(r[i]);
+            p = append_expanded(r[i], &pat, p, &len);
             ERR_BAIL(r[i]->info);
-            len += strlen(expanded) - strlen(r[i]->pattern->str);
-            ret = REALLOC_N(pat, len);
-            ERR_NOMEM(ret < 0, info);
-            p = pat + strlen(pat);
-            p = stpcpy(p, expanded);
-            FREE(expanded);
         } else {
             p = stpcpy(p, r[i]->pattern->str);
         }
@@ -260,7 +354,6 @@ regexp_concat_n(struct info *info, int n, struct regexp **r) {
     size_t len = 0;
     char *pat = NULL, *p, *expanded = NULL;
     int nnocase = 0, npresent = 0;
-    int ret;
 
     for (int i=0; i < n; i++)
         if (r[i] != NULL) {
@@ -285,14 +378,8 @@ regexp_concat_n(struct info *info, int n, struct regexp **r) {
             continue;
         *p++ = '(';
         if (mixedcase && r[i]->nocase) {
-            expanded = regexp_expand_nocase(r[i]);
+            p = append_expanded(r[i], &pat, p, &len);
             ERR_BAIL(r[i]->info);
-            len += strlen(expanded) - strlen(r[i]->pattern->str);
-            ret = REALLOC_N(pat, len);
-            ERR_NOMEM(ret < 0, info);
-            p = pat + strlen(pat);
-            p = stpcpy(p, expanded);
-            FREE(expanded);
         } else {
             p = stpcpy(p, r[i]->pattern->str);
         }

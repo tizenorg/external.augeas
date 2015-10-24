@@ -1,7 +1,7 @@
 /*
  * put.c:
  *
- * Copyright (C) 2007-2010 David Lutterkort
+ * Copyright (C) 2007-2011 David Lutterkort
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -59,6 +59,7 @@ struct state {
     struct split     *split;
     const char       *key;
     const char       *value;
+    const char       *override;
     struct dict      *dict;
     struct skel      *skel;
     char             *path;   /* Position in the tree, for errors */
@@ -420,7 +421,8 @@ static int skel_instance_of(struct lens *lens, struct skel *skel) {
     case L_REC:
         return skel_instance_of(lens->body, skel);
     case L_SQUARE:
-        return skel->tag == L_SQUARE;
+        return skel->tag == L_SQUARE
+            && skel_instance_of(lens->child, skel->skels);
     default:
         BUG_ON(true, lens->info, "illegal lens tag %d", lens->tag);
         break;
@@ -468,11 +470,10 @@ static void put_del(ATTRIBUTE_UNUSED struct lens *lens, struct state *state) {
     assert(lens->tag == L_DEL);
     assert(state->skel != NULL);
     assert(state->skel->tag == L_DEL);
-    if (lens->string != NULL) {
-    fprintf(state->out, "%s", state->skel->text);
+    if (state->override != NULL) {
+        fprintf(state->out, "%s", state->override);
     } else {
-    /* L_DEL with NULL string: replicate the current key */
-        fprintf(state->out, "%s", state->key);
+        fprintf(state->out, "%s", state->skel->text);
     }
 }
 
@@ -598,9 +599,32 @@ static void put_rec(struct lens *lens, struct state *state) {
 }
 
 static void put_square(struct lens *lens, struct state *state) {
+    assert(lens->tag == L_SQUARE);
     struct skel *oldskel = state->skel;
-    state->skel = state->skel->skels;
-    put_lens(lens->child, state);
+    struct split *oldsplit = state->split;
+    struct lens *concat = lens->child;
+    struct lens *left = concat->children[0];
+    struct split *split = split_concat(state, concat);
+
+    /* skels of concat is one depth more */
+    state->skel = state->skel->skels->skels;
+    set_split(state, split);
+    for (int i=0; i < concat->nchildren; i++) {
+        if (state->split == NULL) {
+            put_error(state, concat, "Not enough components in square");
+            list_free(split);
+            return;
+        }
+        struct lens *curr = concat->children[i];
+        if (i == (concat->nchildren - 1) && left->tag == L_KEY)
+            state->override = state->key;
+        put_lens(curr, state);
+        state->override = NULL;
+        state->skel = state->skel->next;
+        next_split(state);
+    }
+    list_free(split);
+    set_split(state, oldsplit);
     state->skel = oldskel;
 }
 
@@ -661,13 +685,11 @@ static void create_subtree(struct lens *lens, struct state *state) {
 
 static void create_del(struct lens *lens, struct state *state) {
     assert(lens->tag == L_DEL);
-    if (lens->string != NULL) {
-        print_escaped_chars(state->out, lens->string->str);
+    if (state->override != NULL) {
+        print_escaped_chars(state->out, state->override);
     } else {
-        /* L_DEL with NULL string: replicate the current key */
-        print_escaped_chars(state->out, state->key);
+        print_escaped_chars(state->out, lens->string->str);
     }
-
 }
 
 static void create_union(struct lens *lens, struct state *state) {
@@ -697,6 +719,32 @@ static void create_concat(struct lens *lens, struct state *state) {
             return;
         }
         create_lens(lens->children[i], state);
+        next_split(state);
+    }
+    list_free(split);
+    set_split(state, oldsplit);
+}
+
+static void create_square(struct lens *lens, struct state *state) {
+    assert(lens->tag == L_SQUARE);
+    struct lens *concat = lens->child;
+
+    struct split *oldsplit = state->split;
+    struct split *split = split_concat(state, concat);
+    struct lens *left = concat->children[0];
+
+    set_split(state, split);
+    for (int i=0; i < concat->nchildren; i++) {
+        if (state->split == NULL) {
+            put_error(state, concat, "Not enough components in square");
+            list_free(split);
+            return;
+        }
+        struct lens *curr = concat->children[i];
+        if (i == (concat->nchildren - 1) && left->tag == L_KEY)
+            state->override = state->key;
+        create_lens(curr, state);
+        state->override = NULL;
         next_split(state);
     }
     list_free(split);
@@ -777,7 +825,7 @@ static void create_lens(struct lens *lens, struct state *state) {
         create_rec(lens, state);
         break;
     case L_SQUARE:
-        create_concat(lens->child, state);
+        create_square(lens, state);
         break;
     default:
         assert(0);

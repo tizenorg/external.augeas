@@ -1,13 +1,13 @@
 # Portability macros for glibc argz.                    -*- Autoconf -*-
 #
-#   Copyright (C) 2004-2011 Free Software Foundation, Inc.
+#   Copyright (C) 2004-2012 Free Software Foundation, Inc.
 #   Written by Gary V. Vaughan <gary@gnu.org>
 #
 # This file is free software; the Free Software Foundation gives
 # unlimited permission to copy and/or distribute it, with or without
 # modifications, as long as this notice is preserved.
 
-# serial 8 argz.m4
+# serial 11 argz.m4
 
 AC_DEFUN([gl_FUNC_ARGZ],
 [gl_PREREQ_ARGZ
@@ -19,7 +19,7 @@ AC_CHECK_HEADERS([argz.h], [], [], [AC_INCLUDES_DEFAULT])
 AC_CHECK_TYPES([error_t],
   [],
   [AC_DEFINE([error_t], [int],
-   [Define to a type to use for `error_t' if it is not otherwise available.])
+   [Define to a type to use for 'error_t' if it is not otherwise available.])
    AC_DEFINE([__error_t_defined], [1], [Define so that glibc/gnulib argp.h
     does not typedef error_t.])],
   [#if defined(HAVE_ARGZ_H)
@@ -27,7 +27,7 @@ AC_CHECK_TYPES([error_t],
 #endif])
 
 ARGZ_H=
-AC_CHECK_FUNC([argz_replace], [], [ARGZ_H=argz.h; AC_LIBOBJ([argz])])
+AC_CHECK_FUNC([argz_replace], [], [ARGZ_H=argz.h])
 
 dnl if have system argz functions, allow forced use of
 dnl libltdl-supplied implementation (and default to do so
@@ -70,10 +70,10 @@ AS_IF([test -z "$ARGZ_H"],
      AS_IF([test "$lt_cv_sys_argz_works" = yes],
         [AC_DEFINE([HAVE_WORKING_ARGZ], [1],
                    [This value is set to 1 to indicate that the system argz facility works])],
-        [ARGZ_H=argz.h
-        AC_LIBOBJ([argz])])])
+        [ARGZ_H=argz.h])])
 
 AC_SUBST([ARGZ_H])
+AM_CONDITIONAL([GL_GENERATE_ARGZ_H], [test -n "$ARGZ_H"])
 ])
 
 # Prerequisites of lib/argz.c.

@@ -8,7 +8,7 @@ About: Reference
   This lens tries to keep as close as possible to `man resolv.conf` where possible.
 
 About: Licence
-  This file is licensed under the LGPLv2+, like the rest of Augeas.
+  This file is licensed under the LGPL v2+, like the rest of Augeas.
 
 About: Lens Usage
 
@@ -25,6 +25,9 @@ autoload xfm
 
 (* View: comment *)
 let comment = Util.comment_generic /[ \t]*[;#][ \t]*/ "# "
+
+(* View: comment_eol *)
+let comment_eol = Util.comment_generic /[ \t]*[;#][ \t]*/ " # "
 
 (* View: empty *)
 let empty = Util.empty
@@ -45,26 +48,48 @@ let ipaddr = [label "ipaddr" . store Rx.ip . netmask?]
 
 (* View: nameserver
      A nameserver entry *)
-let nameserver = Build.key_value_line 
-                    "nameserver" Sep.space (store Rx.ip)
+let nameserver = Build.key_value_line_comment
+                    "nameserver" Sep.space (store Rx.ip) comment_eol
 
 (* View: domain *)
-let domain = Build.key_value_line
-                    "domain" Sep.space (store Rx.word)
+let domain = Build.key_value_line_comment
+                    "domain" Sep.space (store Rx.word) comment_eol
 
 (* View: search *)
-let search = Build.key_value_line
+let search = Build.key_value_line_comment
                     "search" Sep.space
                     (Build.opt_list 
                            [label "domain" . store Rx.word]
                             Sep.space)
+                    comment_eol
 
 (* View: sortlist *)
-let sortlist = Build.key_value_line
+let sortlist = Build.key_value_line_comment
                     "sortlist" Sep.space
                     (Build.opt_list
                            ipaddr
                            Sep.space) 
+                    comment_eol
+
+(* View: lookup *)
+let lookup =
+  let lookup_entry = Build.flag("bind"|"file"|"yp")
+    in Build.key_value_line_comment
+             "lookup" Sep.space
+             (Build.opt_list
+                    lookup_entry
+                    Sep.space)
+             comment_eol
+
+(* View: family *)
+let family =
+  let family_entry = Build.flag("inet4"|"inet6")
+    in Build.key_value_line_comment
+             "family" Sep.space
+             (Build.opt_list
+                    family_entry
+                    Sep.space)
+             comment_eol
 
 (************************************************************************
  * Group:                 SPECIAL OPTIONS
@@ -82,14 +107,16 @@ let options =
       let options_entry = Build.key_value ("ndots"|"timeout"|"attempts") 
                                           (Util.del_str ":") (store Rx.integer)
                         | Build.flag ("debug"|"rotate"|"no-check-names"
-                                     |"inet6"|"ip6-bytestring"|"edns0")
+                                     |"inet6"|"ip6-bytestring"|"edns0"
+				     |"single-request-reopen")
                         | ip6_dotint
 
-            in Build.key_value_line
+            in Build.key_value_line_comment
                     "options" Sep.space
                     (Build.opt_list
                            options_entry
                            Sep.space)
+                    comment_eol
 
 (* View: entry *)
 let entry = nameserver
@@ -97,13 +124,14 @@ let entry = nameserver
           | search
           | sortlist
           | options
+          | lookup
+          | family
 
 (* View: lns *)
 let lns = ( empty | comment | entry )*
 
 (* Variable: filter *)
 let filter = (incl "/etc/resolv.conf")
-    . Util.stdexcl
 
 let xfm = transform lns filter
 

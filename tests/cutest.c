@@ -28,6 +28,7 @@
 
 #include <config.h>
 
+#include <sys/wait.h>
 #include <assert.h>
 #include <setjmp.h>
 #include <stdlib.h>
@@ -75,6 +76,9 @@ CuTest* CuTestNew(const char* name, TestFunction function) {
 
 void CuTestRun(CuTest* tc, TestFunction setup, TestFunction teardown) {
 	jmp_buf buf;
+
+    if (getenv("CUTEST") && STRNEQ(getenv("CUTEST"), tc->name))
+        return;
 	tc->jumpBuf = &buf;
 	if (setjmp(buf) == 0) {
         if (setup)
@@ -334,6 +338,15 @@ void run(CuTest *tc, const char *format, ...) {
         free(msg);
     }
     free(command);
+}
+
+int should_run(const char *name, int argc, char **argv) {
+    if (argc == 0)
+        return 1;
+    for (int i=0; i < argc; i++)
+        if (STREQ(argv[i], name))
+            return 1;
+    return 0;
 }
 
 /*

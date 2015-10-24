@@ -8,13 +8,16 @@ About: Reference
   This lens tries to keep as close as possible to `man 5 keepalived.conf` where possible.
 
 About: License
-   This file is licenced under the LGPLv2+, like the rest of Augeas.
+   This file is licenced under the LGPL v2+, like the rest of Augeas.
 
 About: Lens Usage
    To be documented
 
 About: Configuration files
    This lens applies to /etc/keepalived/keepalived.conf. See <filter>.
+
+About: Examples
+   The <Test_Keepalived> file contains various examples and tests.
 *)
 
 
@@ -33,14 +36,11 @@ let indent = Util.indent
 (* View: eol *)
 let eol = Util.eol
 
+(* View: opt_eol *)
+let opt_eol = del /[ \t]*\n?/ " "
+
 (* View: sep_spc *)
 let sep_spc = Sep.space
-
-(* View: lbracket *)
-let lbracket = Util.del_str "{"
-
-(* View: rbracket *)
-let rbracket = Util.del_str "}"
 
 (* View: comment
 Map comments in "#comment" nodes *)
@@ -52,7 +52,7 @@ let comment_eol = Util.comment_generic /[ \t]*[#!][ \t]*/ " # "
 
 (* View: comment_or_eol
 A <comment_eol> or <eol> *)
-let comment_or_eol = comment_eol | (del /[ \t]*#?\n/ "\n")
+let comment_or_eol = comment_eol | (del /[ \t]*[#!]?\n/ "\n")
 
 (* View: empty
 Map empty lines *)
@@ -71,24 +71,33 @@ let word_slash = word | "/"
 let sto_word = store word
 
 (* View: sto_num *)
-let sto_num = store Rx.integer
+let sto_num = store Rx.relinteger
+
+(* View: sto_to_eol *)
+let sto_to_eol = store /[^#! \t\n][^#!\n]*[^#! \t\n]|[^#! \t\n]/
 
 (* View: field *)
-let field (kw:string) (sto:lens) = indent . Build.key_value_line_comment kw sep_spc sto comment_eol
+let field (kw:regexp) (sto:lens) = indent . Build.key_value_line_comment kw sep_spc sto comment_eol
 
 (* View: flag
 A single word *)
-let flag (kw:regexp) = indent . Build.flag kw
+let flag (kw:regexp) = [ indent . key kw . comment_or_eol ]
+
+(* View: ip_port
+   An IP <space> port pair *)
+let ip_port = [ label "ip" . sto_word ] . sep_spc . [ label "port" . sto_num ]
 
 (* View: lens_block 
-A generic block with a title lens *)
-let lens_block (title:lens) (sto:lens) = [ indent . title . sep_spc . lbracket . eol
-                                         . (sto | empty | comment)+
-                                         . indent . rbracket . eol ]
+A generic block with a title lens.
+The definition is very similar to Build.block_newlines
+but uses a different type of <comment>. *)
+let lens_block (title:lens) (sto:lens) =
+   [ indent . title
+   . Build.block_newlines sto comment . eol ]
 
 (* View: block
 A simple block with just a block title *)
-let block (kw:string) (sto:lens) = lens_block (key kw) sto
+let block (kw:regexp) (sto:lens) = lens_block (key kw) sto
 
 (* View: named_block 
 A block with a block title and name *)
@@ -118,12 +127,13 @@ let email = [ indent . label "email" . sto_email_addr . comment_or_eol ]
 
 (* View: global_defs_field
 Possible fields in the global_defs block *)
-let global_defs_field = block "notification_email" email
-                      | field "notification_email_from" sto_email_addr
-                      | field "smtp_server" sto_word
-                      | field "smtp_connect_timeout" sto_num
-                      | field "lvs_id" sto_word
-                      | field "router_id" sto_word
+let global_defs_field =
+      let word_re = "smtp_server"|"lvs_id"|"router_id"
+   in let num_re = "smtp_connect_timeout"
+   in block "notification_email" email
+    | field "notification_email_from" sto_email_addr
+    | field word_re sto_word
+    | field num_re sto_num
 
 (* View: global_defs
 A global_defs block *)
@@ -135,7 +145,7 @@ let prefixlen = [ label "prefixlen" . Util.del_str "/" . sto_num ]
 
 (* View: ipaddr
 An IP address or range with an optional mask *)
-let ipaddr = label "ipaddr" . store /[0-9\.-]+/ . prefixlen?
+let ipaddr = label "ipaddr" . store /[0-9.-]+/ . prefixlen?
 
 (* View: ipdev
 A device for IP addresses *)
@@ -179,48 +189,123 @@ let vrrp_sync_group_field = block "group" [ indent . key word . comment_or_eol ]
 let vrrp_sync_group = named_block "vrrp_sync_group" vrrp_sync_group_field
 
 (* View: vrrp_instance_field *)
-let vrrp_instance_field = field "state" sto_word
-                        | field "interface" sto_word
-                        | field "lvs_sync_daemon_interface" sto_word
-                        | field "virtual_router_id" sto_num
-                        | field "priority" sto_num
-                        | field "advert_int" sto_num
-                        | flag "smtp_alert"
-                        | flag "nopreempt"
-                        | block "authentication" (
-                                field "auth_type" sto_word
-                              | field "auth_pass" sto_word
-                              )
-                        | block "virtual_ipaddress" static_ipaddress_field
+let vrrp_instance_field =
+      let word_re = "state" | "interface" | "lvs_sync_daemon_interface"
+   in let num_re = "virtual_router_id" | "priority" | "advert_int" | "garp_master_delay"
+   in let to_eol_re = /notify_(master|backup|fault)/
+   in let flag_re = "smtp_alert" | "nopreempt" | "ha_suspend" | "debug"
+   in field word_re sto_word
+    | field num_re sto_num
+    | field to_eol_re sto_to_eol
+    | flag flag_re
+    | block "authentication" (
+         field /auth_(type|pass)/ sto_word
+         )
+    | block "virtual_ipaddress" static_ipaddress_field
+    | block /track_(interface|script)/ ( flag word )
 
 (* View: vrrp_instance *)
 let vrrp_instance = named_block "vrrp_instance" vrrp_instance_field
 
+(* View: vrrp_script_field *)
+let vrrp_script_field =
+      let num_re = "interval" | "weight"
+   in let to_eol_re = "script"
+   in field to_eol_re sto_to_eol
+    | field num_re sto_num
+
+(* View: vrrp_script *)
+let vrrp_script = named_block "vrrp_script" vrrp_script_field
+
 
 (* View: vrrpd_conf
 contains subblocks of VRRP synchronization group(s) and VRRP instance(s) *)
-let vrrpd_conf = vrrp_sync_group | vrrp_instance
+let vrrpd_conf = vrrp_sync_group | vrrp_instance | vrrp_script
 
+
+(************************************************************************
+ * Group:                 REAL SERVER CHECKS CONFIGURATION
+ *************************************************************************)
+
+(* View: tcp_check_field *)
+let tcp_check_field =
+      let word_re = "bindto"
+   in let num_re = /connect_(timeout|port)/
+   in field word_re sto_word
+    | field num_re sto_num
+
+(* View: misc_check_field *)
+let misc_check_field =
+      let flag_re = "misc_dynamic"
+   in let num_re = "misc_timeout"
+   in let to_eol_re = "misc_path"
+   in field num_re sto_num
+    | flag flag_re
+    | field to_eol_re sto_to_eol
+
+(* View: smtp_host_check_field *)
+let smtp_host_check_field =
+      let word_re = "connect_ip" | "bindto"
+   in let num_re = "connect_port"
+   in field word_re sto_word
+    | field num_re sto_num
+
+(* View: smtp_check_field *)
+let smtp_check_field =
+      let word_re = "connect_ip" | "bindto"
+   in let num_re = "connect_timeout" | "retry" | "delay_before_retry"
+   in let to_eol_re = "helo_name"
+   in field word_re sto_word
+    | field num_re sto_num
+    | field to_eol_re sto_to_eol
+    | block "host" smtp_host_check_field
+
+(* View: http_url_check_field *)
+let http_url_check_field =
+      let word_re = "digest"
+   in let num_re = "status_code"
+   in let to_eol_re = "path"
+   in field word_re sto_word
+    | field num_re sto_num
+    | field to_eol_re sto_to_eol
+
+(* View: http_check_field *)
+let http_check_field =
+      let num_re = /connect_(timeout|port)/ | "nb_get_retry" | "delay_before_retry"
+   in field num_re sto_num
+    | block "url" http_url_check_field
+
+(* View: real_server_field *)
+let real_server_field =
+      let num_re = "weight"
+   in let flag_re = "inhibit_on_failure"
+   in let to_eol_re = /notify_(up|down)/
+   in field num_re sto_num
+    | flag flag_re
+    | field to_eol_re sto_to_eol
+    | block "TCP_CHECK" tcp_check_field
+    | block "MISC_CHECK" misc_check_field
+    | block "SMTP_CHECK" smtp_check_field
+    | block /(HTTP|SSL)_GET/ http_check_field
 
 (************************************************************************
  * Group:                 LVS CONFIGURATION
  *************************************************************************)
 
-(* View: tcp_check_field *)
-let tcp_check_field = field "connect_timeout" sto_num
-                    | field "connect_port" sto_num
-
-(* View: real_server_field *)
-let real_server_field = field "weight" sto_num
-                      | block "TCP_CHECK" tcp_check_field
-
 (* View: virtual_server_field *)
-let virtual_server_field = field "delay_loop" sto_num
-                         | field "lb_algo" sto_word
-                         | field "lb_kind" sto_word
-                         | field "nat_mask" sto_word
-                         | field "protocol" sto_word
-                         | named_block_arg "real_server" "ip" "port" real_server_field
+let virtual_server_field =
+      let num_re = "delay_loop" | "persistence_timeout" | "quorum" | "hysteresis"
+   in let word_re = /lb_(algo|kind)/ | "nat_mask" | "protocol" | "persistence_granularity"
+                      | "virtualhost"
+   in let flag_re = "ops" | "ha_suspend" | "alpha" | "omega"
+   in let to_eol_re = /quorum_(up|down)/
+   in let ip_port_re = "sorry_server"
+   in field num_re sto_num
+    | field word_re sto_word
+    | flag flag_re
+    | field to_eol_re sto_to_eol
+    | field ip_port_re ip_port
+    | named_block_arg "real_server" "ip" "port" real_server_field
 
 (* View: virtual_server *)
 let virtual_server = named_block_arg "virtual_server" "ip" "port" virtual_server_field
@@ -247,7 +332,6 @@ let lns = ( empty | comment | global_conf | vrrpd_conf | lvs_conf )*
 
 (* Variable: filter *)
 let filter = incl "/etc/keepalived/keepalived.conf"
-    . Util.stdexcl
 
 let xfm = transform lns filter
 

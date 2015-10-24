@@ -21,7 +21,10 @@ let empty    = IniFile.empty
  * otherwise it would lead to an ambiguity with the "section" label
  * since PHP allows entries outside of sections.
  *************************************************************************)
-let entry    = IniFile.entry IniFile.entry_re sep comment
+let entry    =
+     let word = IniFile.entry_re
+  in let entry_re = word . ( "[" . word . "]" )? 
+  in IniFile.indented_entry entry_re sep comment
 
 
 (************************************************************************
@@ -46,7 +49,11 @@ let lns    = record_anon? . record*
 let filter = (incl "/etc/php*/*/*.ini")
              . (incl "/etc/php.ini")
              . (incl "/etc/php.d/*.ini")
+             (* PHPFPM Support *)
+             . (incl "/etc/php*/fpm/pool.d/*.conf")
+             (* Zend Community edition *)
+             . (incl "/usr/local/zend/etc/php.ini")
+             . (incl "/usr/local/zend/etc/conf.d/*.ini")
              . Util.stdexcl
 
 let xfm = transform lns filter
-

@@ -98,7 +98,7 @@ module Ntp =
 
     (* Authentication commands, see authopt.html#cmd; incomplete *)
     let auth_command =
-      [ key /controlkey|keys|keysdir|requestkey/ .
+      [ key /controlkey|keys|keysdir|requestkey|authenticate/ .
             sep_spc . store word . eol ]
      | [ key /autokey|revoke/ . [sep_spc . store word]? . eol ]
      | [ key /trustedkey/ . [ sep_spc . label "key" . store word ]+ . eol ]
@@ -110,14 +110,24 @@ module Ntp =
       let arg = [ key arg_names . sep_spc . store Rx.decimal ] in
       [ key "tinker" . (sep_spc . arg)* . eol ]
 
+    (* tos [beacon beacon | ceiling ceiling | cohort {0 | 1} |
+            floor floor | maxclock maxclock | maxdist maxdist |
+            minclock minclock | mindist mindist | minsane minsane |
+            orphan stratum | orphanwait delay] *)
+
+    let tos =
+      let arg_names = /beacon|ceiling|cohort|floor|maxclock|maxdist|
+                      minclock|mindist|minsane|orphan|orphanwait/ in
+      let arg = [ key arg_names . sep_spc . store Rx.decimal ] in
+      [ key "tos" . (sep_spc . arg)* . eol ]
+
     (* Define lens *)
 
     let lns = ( comment | empty | command_record | fudge_record
               | restrict_record | simple_settings | statistics_record
               | filegen_record | broadcastclient
-              | auth_command | tinker )*
+              | auth_command | tinker | tos)*
 
     let filter = (incl "/etc/ntp.conf")
-        . Util.stdexcl
 
     let xfm = transform lns filter

@@ -1,7 +1,7 @@
 /*
  * internal.c: internal data structures and helpers
  *
- * Copyright (C) 2007-2010 David Lutterkort
+ * Copyright (C) 2007-2011 David Lutterkort
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -125,8 +125,7 @@ fread_file_lim (FILE *stream, size_t max_len, size_t *length)
     return NULL;
 }
 
-char* xread_file(const char *path) {
-    FILE *fp = fopen(path, "r");
+char* xfread_file(FILE *fp) {
     char *result;
     size_t len;
 
@@ -134,7 +133,6 @@ char* xread_file(const char *path) {
         return NULL;
 
     result = fread_file_lim(fp, MAX_READ_LEN, &len);
-    fclose (fp);
 
     if (result != NULL
         && len <= MAX_READ_LEN
@@ -145,13 +143,27 @@ char* xread_file(const char *path) {
     return NULL;
 }
 
+char* xread_file(const char *path) {
+    FILE *fp;
+    char *result;
+
+    fp = fopen(path, "r");
+    if (!fp)
+        return NULL;
+
+    result = xfread_file(fp);
+    fclose(fp);
+
+    return result;
+}
+
 /*
  * Escape/unescape of string literals
  */
-static const char *const escape_chars    = "\"\a\b\t\n\v\f\r\\";
-static const char *const escape_names = "\"abtnvfr\\";
+static const char *const escape_chars = "\a\b\t\n\v\f\r";
+static const char *const escape_names = "abtnvfr";
 
-char *unescape(const char *s, int len) {
+char *unescape(const char *s, int len, const char *extra) {
     size_t size;
     const char *n;
     char *result, *t;
@@ -161,10 +173,13 @@ char *unescape(const char *s, int len) {
         len = strlen(s);
 
     size = 0;
-    for (i=0; i < len; i++, size++)
-        if (s[i] == '\\' && strchr(escape_names, s[i+1]) != NULL) {
+    for (i=0; i < len; i++, size++) {
+        if (s[i] == '\\' && strchr(escape_names, s[i+1])) {
+            i += 1;
+        } else if (s[i] == '\\' && extra && strchr(extra, s[i+1])) {
             i += 1;
         }
+    }
 
     if (ALLOC_N(result, size + 1) < 0)
         return NULL;
@@ -173,6 +188,9 @@ char *unescape(const char *s, int len) {
         if (s[i] == '\\' && (n = strchr(escape_names, s[i+1])) != NULL) {
             *t++ = escape_chars[n - escape_names];
             i += 1;
+        } else if (s[i] == '\\' && extra && strchr(extra, s[i+1]) != NULL) {
+            *t++ = s[i+1];
+            i += 1;
         } else {
             *t++ = s[i];
         }
@@ -180,7 +198,7 @@ char *unescape(const char *s, int len) {
     return result;
 }
 
-char *escape(const char *text, int cnt) {
+char *escape(const char *text, int cnt, const char *extra) {
 
     int len = 0;
     char *esc = NULL, *e;
@@ -190,6 +208,8 @@ char *escape(const char *text, int cnt) {
 
     for (int i=0; i < cnt; i++) {
         if (text[i] && (strchr(escape_chars, text[i]) != NULL))
+            len += 2;  /* Escaped as '\x' */
+        else if (text[i] && extra && (strchr(extra, text[i]) != NULL))
             len += 2;  /* Escaped as '\x' */
         else if (! isprint(text[i]))
             len += 4;  /* Escaped as '\ooo' */
@@ -204,6 +224,9 @@ char *escape(const char *text, int cnt) {
         if (text[i] && ((p = strchr(escape_chars, text[i])) != NULL)) {
             *e++ = '\\';
             *e++ = escape_names[p - escape_chars];
+        } else if (text[i] && extra && (strchr(extra, text[i]) != NULL)) {
+            *e++ = '\\';
+            *e++ = text[i];
         } else if (! isprint(text[i])) {
             sprintf(e, "\\%03o", (unsigned char) text[i]);
             e += 4;
@@ -225,7 +248,7 @@ int print_chars(FILE *out, const char *text, int cnt) {
     if (cnt < 0)
         cnt = strlen(text);
 
-    esc = escape(text, cnt);
+    esc = escape(text, cnt, "\"");
     total = strlen(esc);
     if (out != NULL)
         fprintf(out, "%s", esc);
@@ -243,10 +266,10 @@ char *format_pos(const char *text, int pos) {
 
     if (before > window)
         before = window;
-    left = escape(text + pos - before, before);
+    left = escape(text + pos - before, before, NULL);
     if (left == NULL)
         goto done;
-    right = escape(text + pos, window);
+    right = escape(text + pos, window, NULL);
     if (right == NULL)
         goto done;
 
@@ -281,7 +304,7 @@ void print_pos(FILE *out, const char *text, int pos) {
     }
 }
 
-int init_memstream(struct memstream *ms) {
+int __aug_init_memstream(struct memstream *ms) {
     MEMZERO(ms, 1);
 #if HAVE_OPEN_MEMSTREAM
     ms->stream = open_memstream(&(ms->buf), &(ms->size));
@@ -295,7 +318,7 @@ int init_memstream(struct memstream *ms) {
 #endif
 }
 
-int close_memstream(struct memstream *ms) {
+int __aug_close_memstream(struct memstream *ms) {
 #if !HAVE_OPEN_MEMSTREAM
     rewind(ms->stream);
     ms->buf = fread_file_lim(ms->stream, MAX_READ_LEN, &(ms->size));
@@ -362,6 +385,24 @@ char *path_of_tree(struct tree *tree) {
     }
     FREE(anc);
     return path;
+}
+
+/* User-facing path cleaning */
+static char *cleanstr(char *path, const char sep) {
+    if (path == NULL || strlen(path) == 0)
+        return path;
+    char *e = path + strlen(path) - 1;
+    while (e >= path && (*e == sep || isspace(*e)))
+        *e-- = '\0';
+    return path;
+}
+
+char *cleanpath(char *path) {
+    if (path == NULL || strlen(path) == 0)
+        return path;
+    if (STREQ(path, "/"))
+        return path;
+    return cleanstr(path, SEP);
 }
 
 const char *xstrerror(int errnum, char *buf, size_t len) {

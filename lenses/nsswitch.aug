@@ -8,7 +8,7 @@ About: Reference
   This lens tries to keep as close as possible to `man nsswitch.conf` where possible.
 
 About: Licence
-  This file is licensed under the LGPLv2+, like the rest of Augeas.
+  This file is licensed under the LGPL v2+, like the rest of Augeas.
 
 About: Lens Usage
 
@@ -32,6 +32,10 @@ let empty = Util.empty
 (* View: sep_colon
     The separator for database entries *)
 let sep_colon = del /:[ \t]*/ ": "
+
+(* View: database_kw
+    The database specification like `passwd', `shadow', or `hosts' *)
+let database_kw = Rx.word
 
 (* View: service
     The service specification like `files', `db', or `nis' *)
@@ -60,35 +64,17 @@ let reaction =
 
 (* View: database *)
 let database = 
-  let database_kw = "aliases"
-                  | "automount"
-                  | "bootparams"
-                  | "ethers"
-                  | "group"
-                  | "hosts"
-                  | "netgroup"
-                  | "netmasks"
-                  | "networks"
-                  | "passwd"
-                  | "protocols"
-                  | "publickey"
-                  | "rpc"
-                  | "sendmailvars"
-                  | "services"
-                  | "shadow"
-                  | "sudoers"
-    in [ label "database" . store database_kw
-               . sep_colon
-               . (Build.opt_list
-                    (service|reaction)
-                    Sep.space)
-               . Util.eol ]
+    [ label "database" . store database_kw
+       . sep_colon
+       . (Build.opt_list
+            (service|reaction)
+            Sep.space)
+       . Util.eol ]
 
 (* View: lns *)
 let lns = ( empty | comment | database )*
 
 (* Variable: filter *)
 let filter = (incl "/etc/nsswitch.conf")
-    . Util.stdexcl
 
 let xfm = transform lns filter

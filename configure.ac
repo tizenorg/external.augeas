@@ -1,6 +1,6 @@
-AC_INIT(augeas, 0.8.1)
+AC_INIT(augeas, 1.3.0)
 AC_CONFIG_SRCDIR([src/augeas.c])
-AC_CONFIG_AUX_DIR([build/aux])
+AC_CONFIG_AUX_DIR([build/ac-aux])
 AM_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE([-Wno-portability 1.11 color-tests parallel-tests])
 AM_SILENT_RULES([yes]) # make --enable-silent-rules the default.
@@ -65,8 +65,8 @@ if test x"$enable_debug" = x"yes"; then
 fi
 
 dnl Version info in libtool's notation
-AC_SUBST([LIBAUGEAS_VERSION_INFO], [13:1:13])
-AC_SUBST([LIBFA_VERSION_INFO], [4:3:3])
+AC_SUBST([LIBAUGEAS_VERSION_INFO], [19:0:19])
+AC_SUBST([LIBFA_VERSION_INFO], [5:0:4])
 
 AC_GNU_SOURCE
 
@@ -94,15 +94,21 @@ AC_SUBST(AUGEAS_CFLAGS)
 AUGEAS_CHECK_READLINE
 AC_CHECK_FUNCS([open_memstream uselocale])
 
-VERSION_SCRIPT_FLAGS=
-$(/usr/bin/ld --help 2>&1 | grep -- --version-script >/dev/null) && \
+AC_MSG_CHECKING([how to pass version script to the linker ($LD)])
+VERSION_SCRIPT_FLAGS=none
+if $LD --help 2>&1 | grep "version-script" >/dev/null 2>/dev/null; then
     VERSION_SCRIPT_FLAGS=-Wl,--version-script=
-test "`uname`" == "SunOS" && \
+elif $LD --help 2>&1 | grep "M mapfile" >/dev/null 2>/dev/null; then
     VERSION_SCRIPT_FLAGS="-Wl,-M -Wl,"
+fi
+AC_MSG_RESULT([$VERSION_SCRIPT_FLAGS])
 AC_SUBST(VERSION_SCRIPT_FLAGS)
-AM_CONDITIONAL([USE_VERSION_SCRIPT], [test -n "$VERSION_SCRIPT_FLAGS"])
+AM_CONDITIONAL([USE_VERSION_SCRIPT], [test "$VERSION_SCRIPT_FLAGS" != none])
 
 gl_INIT
+
+PKG_PROG_PKG_CONFIG
+PKG_CHECK_MODULES([LIBXML], [libxml-2.0])
 
 AC_CHECK_FUNCS([strerror_r fsync])
 

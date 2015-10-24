@@ -1,7 +1,7 @@
 /*
  * lens.c:
  *
- * Copyright (C) 2007-2010 David Lutterkort
+ * Copyright (C) 2007-2011 David Lutterkort
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -49,6 +49,8 @@ static const char *lens_type_names[] =
 static struct value * typecheck_union(struct info *,
                                       struct lens *l1, struct lens *l2);
 static struct value *typecheck_concat(struct info *,
+                                      struct lens *l1, struct lens *l2);
+static struct value *typecheck_square(struct info *,
                                       struct lens *l1, struct lens *l2);
 static struct value *typecheck_iter(struct info *info, struct lens *l);
 static struct value *typecheck_maybe(struct info *info, struct lens *l);
@@ -115,7 +117,7 @@ static struct value *str_to_fa(struct info *info, const char *pattern,
         return NULL;
     }
 
-    re_str = escape(pattern, -1);
+    re_str = escape(pattern, -1, RX_ESCAPES);
     ERR_NOMEM(re_str == NULL, info);
 
     exn = make_exn_value(info, "Invalid regular expression /%s/", re_str);
@@ -134,7 +136,7 @@ static struct value *str_to_fa(struct info *info, const char *pattern,
  error:
     fa_free(*fa);
     *fa = NULL;
-    exn = exn_error();
+    exn = info->error->exn;
     goto done;
 }
 
@@ -398,35 +400,90 @@ struct value *lns_make_maybe(struct info *info, struct lens *l, int check) {
     return make_lens_value(lens);
 }
 
-/* Build a square lens as
- *   key REG . lns . del REG MATCHED
- * where MATCHED is whatever the key lens matched (the inability to express
- * this with other lenses makes the square primitve necessary
+/* The ctype of SQR is a regular approximation of the true ctype of SQR
+ * at this point. In some situations, for example in processing quoted
+ * strings this leads to false typecheck errors; to lower the chances
+ * of these, we try to construct the precise ctype of SQR if the
+ * language of L1 is finite (and has a small number of words)
  */
-struct value *lns_make_square(struct info *info,
-                              struct regexp *reg,
-                              struct lens *lns, int check) {
-    struct value *key = NULL, *del = NULL;
+static void square_precise_type(struct info *info,
+                                struct regexp **sqr,
+                                struct regexp *left,
+                                struct regexp *body) {
+
+    char **words = NULL;
+    int nwords = 0, r;
+    struct fa *fa = NULL;
+    struct value *exn = NULL;
+    struct regexp **u = NULL, *c[3], *w = NULL;
+
+    exn = str_to_fa(info, left->pattern->str, &fa, left->nocase);
+    if (exn != NULL)
+        goto error;
+
+    nwords = fa_enumerate(fa, 10, &words); /* The limit of 10 is arbitrary */
+    if (nwords < 0)
+        goto error;
+
+    r = ALLOC_N(u, nwords);
+    ERR_NOMEM(r < 0, info);
+
+    c[1] = body;
+    for (int i=0; i < nwords; i++) {
+        w = make_regexp_literal(left->info, words[i]);
+        ERR_NOMEM(w == NULL, info);
+        w->nocase = left->nocase;
+
+        c[0] = c[2] = w;
+        u[i] = regexp_concat_n(info, 3, c);
+
+        unref(w, regexp);
+        ERR_NOMEM(u[i] == NULL, info);
+    }
+    w = regexp_union_n(info, nwords, u);
+    if (w != NULL) {
+        unref(*sqr, regexp);
+        *sqr = w;
+        w = NULL;
+    }
+
+ error:
+    unref(w, regexp);
+    for (int i=0; i < nwords; i++) {
+        free(words[i]);
+        if (u != NULL)
+            unref(u[i], regexp);
+    }
+    free(words);
+    free(u);
+    fa_free(fa);
+    unref(exn, value);
+}
+
+/* Build a square lens as
+ *    left . body . right
+ * where left and right accepts the same language and
+ * captured strings must match. The inability to express this with other
+ * lenses makes the square primitive necessary.
+ */
+struct value * lns_make_square(struct info *info, struct lens *l1,
+                               struct lens *l2, struct lens *l3, int check) {
     struct value *cnt1 = NULL, *cnt2 = NULL, *res = NULL;
     struct lens *sqr = NULL;
 
-    res = lns_make_prim(L_KEY, ref(info), ref(reg), NULL);
-    if (EXN(res))
-        goto error;
-    key = res;
+    /* supported types: L_KEY . body . L_DEL or L_DEL . body . L_DEL */
+    if (l3->tag != L_DEL || (l1->tag != L_DEL && l1->tag != L_KEY))
+        return make_exn_value(info, "Supported types: (key lns del) or (del lns del)");
 
-    res = lns_make_prim(L_DEL, ref(info), ref(reg), NULL);
-    if (EXN(res))
+    res = typecheck_square(info, l1, l3);
+    if (res != NULL)
         goto error;
-    del = res;
 
-    // typechecking is handled when concatenating lenses
-    res = lns_make_concat(ref(info), ref(key->lens), ref(lns), check);
+    res = lns_make_concat(ref(info), ref(l1), ref(l2), check);
     if (EXN(res))
         goto error;
     cnt1 = res;
-
-    res = lns_make_concat(ref(info), ref(cnt1->lens), ref(del->lens), check);
+    res = lns_make_concat(ref(info), ref(cnt1->lens), ref(l3), check);
     if (EXN(res))
         goto error;
     cnt2 = res;
@@ -436,6 +493,9 @@ struct value *lns_make_square(struct info *info,
 
     for (int t=0; t < ntypes; t++)
         ltype(sqr, t) = ref(ltype(cnt2->lens, t));
+
+    square_precise_type(info, &(sqr->ctype), l1->ctype, l2->ctype);
+
     sqr->recursive = cnt2->lens->recursive;
     sqr->rec_internal = cnt2->lens->rec_internal;
     sqr->consumes_value = cnt2->lens->consumes_value;
@@ -446,11 +506,9 @@ struct value *lns_make_square(struct info *info,
 
  error:
     unref(info, info);
-    unref(reg, regexp);
-    unref(lns, lens);
-
-    unref(key, value);
-    unref(del, value);
+    unref(l1, lens);
+    unref(l2, lens);
+    unref(l3, lens);
     unref(cnt1, value);
     unref(cnt2, value);
     unref(sqr, lens);
@@ -542,7 +600,7 @@ struct value *lns_make_prim(enum lens_tag tag, struct info *info,
         const char *dflt = string->str;
         cnt = regexp_match(regexp, dflt, strlen(dflt), 0, NULL);
         if (cnt != strlen(dflt)) {
-            char *s = escape(dflt, -1);
+            char *s = escape(dflt, -1, RX_ESCAPES);
             char *r = regexp_escape(regexp);
             exn = make_exn_value(info,
                    "del: the default value '%s' does not match /%s/",
@@ -692,7 +750,7 @@ ambig_check(struct info *info, struct fa *fa1, struct fa *fa2,
             return exn;
         } else {
             ERR_REPORT(info, AUG_ENOMEM, NULL);
-            return exn_error();
+            return info->error->exn;
         }
     }
 
@@ -709,11 +767,11 @@ ambig_check(struct info *info, struct fa *fa1, struct fa *fa2,
             lns_format_atype(l1, &s1);
             lns_format_atype(l2, &s2);
         } else {
-            e_u = escape(upv, pv - upv);
-            e_up = escape(upv, v - upv);
-            e_upv = escape(upv, -1);
-            e_pv = escape(pv, -1);
-            e_v = escape(v, -1);
+            e_u = escape(upv, pv - upv, RX_ESCAPES);
+            e_up = escape(upv, v - upv, RX_ESCAPES);
+            e_upv = escape(upv, -1, RX_ESCAPES);
+            e_pv = escape(pv, -1, RX_ESCAPES);
+            e_v = escape(v, -1, RX_ESCAPES);
             s1 = regexp_escape(ltype(l1, typ));
             s2 = regexp_escape(ltype(l2, typ));
         }
@@ -786,6 +844,74 @@ static struct value *typecheck_concat(struct info *info,
         free(fi);
     }
     return result;
+}
+
+static struct value *make_exn_square(struct info *info, struct lens *l1,
+                                     struct lens *l2, const char *msg) {
+
+    char *fi;
+    struct value *exn = make_exn_value(ref(info), "%s",
+            "Inconsistency in lens square");
+    exn_printf_line(exn, "%s", msg);
+    fi = format_info(l1->info);
+    exn_printf_line(exn, "Left lens: %s", fi);
+    free(fi);
+    fi = format_info(l2->info);
+    exn_printf_line(exn, "Right lens: %s", fi);
+    free(fi);
+    return exn;
+}
+
+static struct value *typecheck_square(struct info *info, struct lens *l1,
+                                      struct lens *l2) {
+    int r;
+    struct value *exn = NULL;
+    struct fa *fa1 = NULL, *fa2 = NULL;
+    struct regexp *r1 = ltype(l1, CTYPE);
+    struct regexp *r2 = ltype(l2, CTYPE);
+
+    if (r1 == NULL || r2 == NULL)
+        return NULL;
+
+    exn = regexp_to_fa(r1, &fa1);
+    if (exn != NULL)
+        goto done;
+
+    exn = regexp_to_fa(r2, &fa2);
+    if (exn != NULL)
+        goto done;
+
+    r = fa_equals(fa1, fa2);
+
+    if (r < 0) {
+        exn = make_exn_value(ref(info), "not enough memory");
+        if (exn != NULL) {
+            return exn;
+        } else {
+            ERR_REPORT(info, AUG_ENOMEM, NULL);
+            return info->error->exn;;
+        }
+    }
+
+    if (r == 0) {
+        exn = make_exn_square(info, l1, l2,
+                "Left and right lenses must accept the same language");
+        goto done;
+    }
+
+    /* check del create consistency */
+    if (l1->tag == L_DEL && l2->tag == L_DEL) {
+        if (!STREQ(l1->string->str, l2->string->str)) {
+            exn = make_exn_square(info, l1, l2,
+                    "Left and right lenses must have the same default value");
+            goto done;
+        }
+    }
+
+ done:
+    fa_free(fa1);
+    fa_free(fa2);
+    return exn;
 }
 
 static struct value *
@@ -889,7 +1015,6 @@ void free_lens(struct lens *lens) {
     case L_REC:
         if (!lens->rec_internal) {
             unref(lens->body, lens);
-            jmt_free(lens->jmt);
         }
         break;
     default:
@@ -901,7 +1026,7 @@ void free_lens(struct lens *lens) {
         unref(ltype(lens, t), regexp);
 
     unref(lens->info, info);
-
+    jmt_free(lens->jmt);
     free(lens);
  error:
     return;
@@ -918,7 +1043,7 @@ void lens_release(struct lens *lens) {
         regexp_release(lens->regexp);
 
     if (lens->tag == L_SUBTREE || lens->tag == L_STAR
-        || lens->tag == L_MAYBE) {
+        || lens->tag == L_MAYBE || lens->tag == L_SQUARE) {
         lens_release(lens->child);
     }
 
@@ -928,10 +1053,8 @@ void lens_release(struct lens *lens) {
         }
     }
 
-    if (lens->tag == L_REC) {
-        jmt_free(lens->jmt);
-        lens->jmt = NULL;
-    }
+    jmt_free(lens->jmt);
+    lens->jmt = NULL;
 }
 
 /*
@@ -945,8 +1068,9 @@ char *enc_format(const char *e, size_t len) {
     while (*k && k - e < len) {
         char *eq,  *slash, *v;
         eq = strchr(k, ENC_EQ_CH);
+        assert(eq != NULL);
         slash = strchr(eq, ENC_SLASH_CH);
-        assert(eq != NULL && slash != NULL);
+        assert(slash != NULL);
         v = eq + 1;
 
         size += 6;     /* Surrounding braces */
@@ -1538,6 +1662,10 @@ static void rtn_rules(struct rtn *rtn, struct lens *l) {
         rtn_rules(rtn, l->body);
         RTN_BAIL(rtn);
         break;
+    case L_SQUARE:
+        add_trans(rtn, start, prod->end, l->child);
+        RTN_BAIL(rtn);
+        break;
     default:
         BUG_LENS_TAG(l);
         break;
@@ -1694,7 +1822,7 @@ static void collapse_trans(struct rtn *rtn,
 
     return;
  error:
-    rtn->exn = exn_error();
+    rtn->exn = rtn->info->error->exn;
     return;
 }
 
@@ -2005,7 +2133,7 @@ static struct value *rtn_approx(struct lens *rec, enum lens_type lt) {
     return result;
  error:
     if (rtn->exn == NULL)
-        result = exn_error();
+        result = rec->info->error->exn;
     else
         result = ref(rtn->exn);
     goto done;
@@ -2163,7 +2291,7 @@ struct value *lns_check_rec(struct info *info,
     if (result != NULL && result->tag != V_EXN)
         unref(result, value);
     if (result == NULL)
-        result = exn_error();
+        result = info->error->exn;
     return result;
 }
 

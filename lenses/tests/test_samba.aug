@@ -42,15 +42,15 @@ module Test_samba =
 "
 
    test Samba.lns get conf =
-      { "#comment" }
+      {}
       { "#comment" = "Sample configuration file for the Samba suite for Debian GNU/Linux." }
-      { "#comment" }
-      { "#comment" }
+      {}
+      {}
       { "#comment" = "This is the main Samba configuration file. You should read the" }
       { "#comment" = "smb.conf(5) manual page in order to understand the options listed" }
       { "#comment" = "here. Samba has a huge number of configurable options most of which" }
       { "#comment" = "are not shown in this example" }
-      { "#comment" }
+      {}
       {}
       { "#comment" = "======================= Global Settings =======================" }
       {}
@@ -85,3 +85,19 @@ module Test_samba =
     test Samba.lns get "[test]\ncrazy:entry = foo\n" =
          { "target" = "test"
             {"crazy:entry" = "foo"}}
+
+    (* Test complex idmap commands with asterisk in key name, ticket #354 *)
+    test Samba.lns get "[test]
+  idmap backend = tdb
+  idmap uid = 1000000-1999999
+  idmap gid = 1000000-1999999
+
+  idmap config CORP : backend  = ad
+  idmap config * : range = 1000-999999\n" =
+      { "target" = "test"
+        { "idmap backend" = "tdb" }
+        { "idmap uid" = "1000000-1999999" }
+        { "idmap gid" = "1000000-1999999" }
+        {  }
+        { "idmap config CORP : backend" = "ad" }
+        { "idmap config * : range" = "1000-999999" } }

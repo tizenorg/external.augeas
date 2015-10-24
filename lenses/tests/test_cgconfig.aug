@@ -85,7 +85,7 @@ test Cgconfig.lns get group1 =
     {  } }
 
 let group2="
-group aa{
+group aa-1{
      perm {
 		 task { }
 		 admin { }
@@ -94,7 +94,7 @@ group aa{
 
 test Cgconfig.lns get group2 =
   {  }
-  { "group" = "aa"
+  { "group" = "aa-1"
     {  }
     { "perm"
       {  }
@@ -253,3 +253,68 @@ test Cgconfig.lns get group4 =
     {  } }
   {  }
   {  }
+
+test Cgconfig.lns put "group tst {memory {}}" after
+  set "/group" "tst2"
+= "group tst2 {memory {}}"
+
+let group5="
+group user {
+	cpuacct {}
+        cpu {}
+        cpuset {}
+        devices {}
+        freezer {}
+        memory {}
+        net_cls {}
+        blkio {}
+        hugetlb {}
+        perf_event {}
+}"
+
+test Cgconfig.lns get group5 =
+  {  }
+  { "group" = "user"
+    {  }
+    { "controller" = "cpuacct" }
+    {  }
+    { "controller" = "cpu" }
+    {  }
+    { "controller" = "cpuset" }
+    {  }
+    { "controller" = "devices" }
+    {  }
+    { "controller" = "freezer" }
+    {  }
+    { "controller" = "memory" }
+    {  }
+    { "controller" = "net_cls" }
+    {  }
+    { "controller" = "blkio" }
+    {  }
+    { "controller" = "hugetlb" }
+    {  }
+    { "controller" = "perf_event" }
+    {  }
+  }
+
+(* quoted controller parameter whitespace *)
+let group6="
+group blklimit {
+     blkio {
+               blkio.throttle.read_iops_device=\"8:0 50\";
+     }
+}"
+
+test Cgconfig.lns get group6 =
+  {  }
+  { "group" = "blklimit"
+    {  }
+    { "controller" = "blkio"
+      {  }
+      { "blkio.throttle.read_iops_device" = "\"8:0 50\"" }
+      {  }
+    }
+    {  }
+  }
+

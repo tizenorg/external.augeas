@@ -8,6 +8,9 @@ test lns get "true" = { "const" = "true" }
 
 test lns get "3.141" = { "number" = "3.141" }
 
+test lns get "{ \"key\" : 666 }" =
+  { "dict" { "entry" = "key" { "number" = "666" } } }
+
 test lns get "[true, 0, \"yo\"]" =
   { "array" { "const" = "true" } { "number" = "0" } { "string" = "yo" } }
 
@@ -27,6 +30,11 @@ test lns get "{ \"0\": true, \"1\":false }" =
 test lns get "{\"menu\": \"entry one\"}" =
   { "dict" { "entry" = "menu" { "string" = "entry one" } } }
 
+test lns get "[ ]" =
+  { "array" }
+
+test lns get "{}" =
+  { "dict" }
 
 let s = "{\"menu\": {
   \"id\": \"file\",

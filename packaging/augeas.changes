@@ -1,15 +1,9 @@
-* Thu May 26 2011 Junfeng Dong <junfeng.dong@intel.com> - 0.8.1
-- Update to latest version 0.8.1 to work with gcc 4.6 
-  (failure caused by -Wunused-but-set-variable).
+* Mon Aug  5 23:48:34 UTC 2013 - tracy.graydon@intel.com
+- Fix rpmlint failures on group and license info 
 
-* Sat Sep 04 2010 Anas Nashif <nashif@linux.intel.com> - 0.7.2
-- Fixed dependencies: libs should not require augeas
+* Fri Jan 11 2013 Anas Nashif <anas.nashif@intel.com> submit/trunk/20130112.051631@a3a1309
+- Set license file as %license
 
-* Mon Jul 12 2010 Yu <yu.a.wang@intel.com> - 0.7.2
-- Update to 0.7.2, use spectacle
+* Fri Jan 11 2013 Anas Nashif <anas.nashif@intel.com> upstream/0.10.0@9174462
+- Fix build with missing gets declaration
 
-* Wed Jan 27 2010 Peter J Zhu <peter.j.zhu@intel.com> - 0.7.0
-- Update to 0.7
-
-* Fri Aug 14 2009 Anas Nashif <anas.nashif@intel.com> - 0.5.2
-- Initial import into Moblin
